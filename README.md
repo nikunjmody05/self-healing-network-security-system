@@ -386,10 +386,21 @@ real flows; seeded retraining for a fully leakage-free benchmark.
 The Python modules sit at the top level because they import each other directly; this keeps the
 verified code unchanged.
 
-## Author
 
-**Nikunj Mody** — design and implementation (ML/RL pipeline, threat memory, endpoint healing,
-APT simulation, database, SOC dashboard).
+## Project Team
+
+This project was developed as part of the **B.Tech in Artificial Intelligence and Data Science** program at **K. J. Somaiya School of Engineering, Somaiya Vidyavihar University, Mumbai**.
+
+### Group Members
+
+- **Nikunj Mody**
+- **Swaraj Patil**
+- **Jash Prajapati**
+- **Kevalya Rathod**
+
+### Academic Guide
+
+**Prof. Deepti Patole**
 
 ## Acknowledgements
 
