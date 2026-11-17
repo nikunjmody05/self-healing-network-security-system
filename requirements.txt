@@ -1,0 +1,11 @@
+# Tested with Python 3.14.5 on Windows 11.
+# Versions are pinned because models/rf_model.pkl is a pickled scikit-learn model.
+pandas==3.0.2
+numpy==2.4.4
+scikit-learn==1.8.0
+joblib==1.5.3
+matplotlib==3.10.8
+pyarrow==23.0.1          # parquet engine for the CIC-IDS dataset
+
+# Only needed for training/train_random_forest.py (plots):
+seaborn==0.13.2

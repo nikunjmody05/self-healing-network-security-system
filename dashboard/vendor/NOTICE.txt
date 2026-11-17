@@ -1,0 +1,23 @@
+Third-party assets bundled for offline use
+==========================================
+
+These files are NOT covered by the project's MIT licence; they remain under
+their own licences. Full licence texts: ../../third_party_licenses/
+
+chart.umd.js   (also copied to examples/sample_run/)
+  Chart.js v4.4.1 - https://www.chartjs.org
+  MIT License, Copyright (c) 2014-2022 Chart.js Contributors
+  Licence: third_party_licenses/Chart.js-LICENSE.txt
+  Unmodified. SHA-256 74401d738dd3e03ee5dfb3b6841210fe2c4ead8a960c4011ca4ba0b78a9fd8f3
+  (identical on cdnjs and jsDelivr).
+
+fonts/   (also copied to examples/sample_run/fonts/)
+  Latin-subset WOFF2 files exactly as served by Google Fonts (unmodified).
+  SIL Open Font License, Version 1.1:
+    Inter            Copyright 2020 The Inter Project Authors
+                     third_party_licenses/Inter-OFL.txt
+    Rajdhani         Copyright (c) 2014, Indian Type Foundry
+                     third_party_licenses/Rajdhani-OFL.txt
+    Share Tech Mono  Copyright (c) 2012, Carrois Type Design, Ralph du Carrois,
+                     Reserved Font Name 'Share'
+                     third_party_licenses/ShareTechMono-OFL.txt

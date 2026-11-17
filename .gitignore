@@ -1,0 +1,64 @@
+# ------------------------------------------------------------------
+# Datasets (large, third-party licensed: download separately)
+# ------------------------------------------------------------------
+data/*
+!data/.gitkeep
+*.parquet
+*.zip
+*.7z
+*.tar.gz
+
+# ------------------------------------------------------------------
+# Generated outputs (every run writes to runs/<RUN_ID>/)
+# ------------------------------------------------------------------
+runs/
+models/retrained/
+
+# Databases are generated per run; the schema is in database/schema.sql
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+
+# ------------------------------------------------------------------
+# Private / academic documents (never publish)
+# ------------------------------------------------------------------
+docs/
+project_docs/
+CLAUDE.md
+*.docx
+*.doc
+*.pdf
+*.pptx
+# Every Markdown file except the public README
+*.md
+!README.md
+
+# ------------------------------------------------------------------
+# Python / environments / tooling
+# ------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.ipynb_checkpoints/
+.pytest_cache/
+.mypy_cache/
+.coverage
+*.log
+
+# Secrets and local configuration
+.env
+.env.*
+*.pem
+*.key
+secrets*
+
+# Editors / OS
+.vscode/
+.idea/
+.claude/
+Thumbs.db
+Desktop.ini
+.DS_Store

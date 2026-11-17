@@ -1,0 +1,1822 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>APT Self-Healing SOC Dashboard</title>
+<!-- Same Google Fonts, bundled locally (SIL OFL) so the design is identical offline -->
+<link href="fonts/fonts.css" rel="stylesheet"/>
+<!-- Chart.js 4.4.1 bundled next to this file (works offline); CDN only as fallback -->
+<script src="chart.umd.js"></script>
+<script>if(typeof Chart==='undefined'){document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"><\/script>');}</script>
+<script src="dashboard_data.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#050a14;--bg2:#080f1e;--card:#0d1a30;--card2:#101e35;--border:#1a3050;--border2:#1e3a5f;--accent:#00c8ff;--green:#00e5a0;--red:#ff4466;--orange:#ff8c00;--purple:#9966ff;--yellow:#ffe066;--text:#c8dff0;--text2:#8baac8;--text3:#4d7a9f;--glow:0 0 20px rgba(0,200,255,0.13)}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;line-height:1.6}
+.mono{font-family:'Share Tech Mono',monospace}
+
+/* HEADER */
+.hdr{background:linear-gradient(180deg,#020810,var(--bg2));border-bottom:1px solid var(--border);padding:0 36px;position:sticky;top:0;z-index:300}
+.hdr-in{max-width:1400px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:64px}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-ic{width:36px;height:36px;border:1.5px solid var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:18px;box-shadow:0 0 12px rgba(0,200,255,0.3)}
+.logo-t{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:16px;letter-spacing:.08em;color:#fff}
+.logo-s{font-size:10px;color:var(--text3);letter-spacing:.08em;text-transform:uppercase}
+.sbar{display:flex;align-items:center;gap:18px}
+.si{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text2)}
+.dot{width:7px;height:7px;border-radius:50%;animation:pulse 2s infinite}
+.dg{background:var(--green);box-shadow:0 0 6px var(--green)}
+.db{background:var(--accent);box-shadow:0 0 6px var(--accent)}
+.dy{background:var(--yellow);box-shadow:0 0 6px var(--yellow)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* NAV */
+.nav{display:flex;gap:2px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:8px;padding:3px}
+.nb{padding:5px 16px;border-radius:6px;font-size:12px;cursor:pointer;color:var(--text3);border:none;background:none;font-family:'Rajdhani',sans-serif;font-weight:600;letter-spacing:.05em;transition:all .2s}
+.nb:hover{color:var(--text2)}
+.nb.act{color:#fff;background:linear-gradient(135deg,rgba(0,200,255,.2),rgba(153,102,255,.15));border:1px solid rgba(0,200,255,.3)}
+
+/* PAGES */
+.pg{display:none;max-width:1400px;margin:0 auto;padding:28px 36px}
+.pg.show{display:block}
+
+/* LAYOUT */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.mb{margin-bottom:20px}
+
+/* CARD */
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:22px;transition:border-color .25s,box-shadow .25s}
+.card:hover{border-color:var(--border2);box-shadow:var(--glow)}
+.ct{font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.1em;margin-bottom:14px}
+
+/* SECTION HDR */
+.sh{display:flex;align-items:center;gap:10px;margin:32px 0 18px}
+.stag{width:4px;height:26px;border-radius:2px;background:linear-gradient(180deg,var(--accent),var(--purple))}
+.stitle{font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;color:#fff;letter-spacing:.04em}
+.ssub{margin-left:auto;font-size:11px;color:var(--text3);border:1px solid var(--border);border-radius:4px;padding:2px 8px;font-family:'Share Tech Mono',monospace}
+
+/* HERO */
+.hero{background:linear-gradient(135deg,#05101e,#071525,#05101e);border:1px solid var(--border);border-radius:14px;padding:40px 48px;margin-bottom:28px;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;top:-1px;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--accent),var(--purple),transparent)}
+.hgrid{display:grid;grid-template-columns:1fr auto;gap:40px;align-items:center}
+.htag{display:inline-flex;align-items:center;gap:7px;padding:3px 12px;border-radius:99px;border:1px solid rgba(0,200,255,.25);background:rgba(0,200,255,.06);color:var(--accent);font-size:11px;font-family:'Rajdhani',sans-serif;font-weight:600;letter-spacing:.1em;margin-bottom:14px}
+.hero h1{font-family:'Rajdhani',sans-serif;font-size:32px;font-weight:700;line-height:1.15;color:#fff;margin-bottom:6px}
+.hero h1 span{color:var(--accent)}
+.hero-sub2{font-family:'Rajdhani',sans-serif;font-size:15px;color:var(--accent);letter-spacing:.04em;margin-bottom:10px;font-weight:600}
+.hsub{color:var(--text2);font-size:13px;max-width:540px;margin-bottom:20px}
+.trow{display:flex;gap:20px;flex-wrap:wrap}
+.ti{font-size:11px;color:var(--text3)}
+.ti strong{color:var(--text2);display:block;font-size:12px}
+.hstats{display:flex;flex-direction:column;gap:12px;min-width:178px}
+.hs{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 18px;text-align:center;cursor:default}
+.hs .v{font-family:'Rajdhani',sans-serif;font-size:32px;font-weight:700;color:var(--accent);line-height:1}
+.hs .l{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-top:3px}
+
+/* SIM MODE BADGE */
+.sim-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(255,224,102,.07);border:1px solid rgba(255,224,102,.3);border-radius:8px;padding:7px 14px;font-size:12px;color:var(--yellow);font-family:'Rajdhani',sans-serif;font-weight:600;letter-spacing:.06em}
+
+/* METRICS */
+.met{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px;text-align:center;cursor:default}
+.mv{font-family:'Rajdhani',sans-serif;font-size:32px;font-weight:700;color:var(--accent);line-height:1}
+.mv.g{color:var(--green)}.mv.o{color:var(--orange)}.mv.y{color:var(--yellow)}
+.ml{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-top:5px}
+
+/* PROBLEM CARDS */
+.pc{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px;position:relative;overflow:hidden}
+.pc::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px}
+.pc.r::after{background:var(--red)}.pc.o::after{background:var(--orange)}.pc.p::after{background:var(--purple)}.pc.y::after{background:var(--yellow)}
+.pci{font-size:24px;margin-bottom:8px}
+.pct{font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;color:#fff;margin-bottom:5px}
+.pcd{font-size:12px;color:var(--text3);line-height:1.5}
+.pcb{display:inline-block;padding:2px 9px;border-radius:99px;font-size:10px;font-weight:600;margin-top:8px}
+.pcb.r{background:rgba(255,68,102,.12);color:var(--red);border:1px solid rgba(255,68,102,.25)}
+.pcb.o{background:rgba(255,140,0,.12);color:var(--orange);border:1px solid rgba(255,140,0,.25)}
+.pcb.p{background:rgba(153,102,255,.12);color:var(--purple);border:1px solid rgba(153,102,255,.25)}
+.pcb.y{background:rgba(255,224,102,.12);color:var(--yellow);border:1px solid rgba(255,224,102,.25)}
+
+/* PIPELINE */
+.pline{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:28px;overflow-x:auto}
+.pf{display:flex;align-items:center;justify-content:center;gap:0;min-width:min-content}
+.pn{flex-shrink:0;background:var(--card2);border:1px solid var(--border2);border-radius:10px;padding:14px 16px;min-width:120px;text-align:center}
+.pn.h1{border-color:rgba(0,200,255,.5);background:rgba(0,200,255,.06);box-shadow:0 0 12px rgba(0,200,255,.1)}
+.pn.h2{border-color:rgba(153,102,255,.5);background:rgba(153,102,255,.06);box-shadow:0 0 12px rgba(153,102,255,.1)}
+.pn.h3{border-color:rgba(0,229,160,.5);background:rgba(0,229,160,.06);box-shadow:0 0 12px rgba(0,229,160,.1)}
+.pni{font-size:20px;margin-bottom:5px;display:block}
+.pnl{font-family:'Rajdhani',sans-serif;font-size:12px;font-weight:700;color:#fff;line-height:1.2}
+.pns{font-size:10px;color:var(--text3);margin-top:2px}
+.pnl2{font-size:9px;color:var(--accent);margin-top:3px;font-family:'Share Tech Mono',monospace}
+.parr{flex-shrink:0;width:32px;height:2px;background:linear-gradient(90deg,var(--border2),var(--accent));position:relative;margin:0 -1px;animation:flowpulse 2s infinite}
+.parr::after{content:'▶';position:absolute;right:-7px;top:50%;transform:translateY(-50%);color:var(--accent);font-size:9px}
+@keyframes flowpulse{0%,100%{opacity:.6}50%{opacity:1}}
+
+/* NET DIAGRAM */
+.nf{display:flex;align-items:center;justify-content:center;gap:0;overflow-x:auto;padding:8px 0}
+.nn{flex-shrink:0;text-align:center;min-width:96px}
+.nbox{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;width:80px;height:64px;border-radius:10px;border:1px solid var(--border2);background:var(--card2)}
+.nbox.sp{border-color:rgba(0,200,255,.5);background:linear-gradient(135deg,rgba(0,200,255,.09),rgba(153,102,255,.09));box-shadow:0 0 20px rgba(0,200,255,.18),0 0 40px rgba(0,200,255,.06)}
+.ni{font-size:20px}
+.nbl{font-size:9px;color:var(--text3);margin-top:3px;font-weight:600;letter-spacing:.05em;font-family:'Rajdhani',sans-serif}
+.nlb{font-size:11px;color:var(--text2);margin-top:7px;font-family:'Rajdhani',sans-serif;font-weight:600}
+.nc{flex-shrink:0;width:28px;height:2px;background:var(--border2);position:relative;margin:0 2px}
+.nc::after{content:'▶';position:absolute;right:-6px;top:50%;transform:translateY(-50%);color:var(--accent);font-size:8px}
+
+/* TABLES */
+.dt{width:100%;border-collapse:collapse}
+.dt th{background:rgba(0,200,255,.06);border:1px solid var(--border);padding:9px 13px;font-family:'Rajdhani',sans-serif;font-size:12px;font-weight:700;color:var(--accent);text-align:left;letter-spacing:.06em}
+.dt td{border:1px solid var(--border);padding:9px 13px;font-size:12px;color:var(--text)}
+.dt tr:hover td{background:rgba(0,200,255,.025)}
+.atk{color:var(--red)}.ben{color:var(--green)}.tal{color:var(--green)}.talt{color:var(--yellow)}.tblk{color:var(--red)}
+
+/* CM TABLE */
+.cm{border-collapse:collapse}
+.cm td,.cm th{width:95px;height:72px;text-align:center;vertical-align:middle;border:1px solid var(--border)}
+.tp{background:rgba(0,229,160,.18);color:var(--green);font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700}
+.tn{background:rgba(0,229,160,.12);color:var(--green);font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700}
+.fp{background:rgba(255,68,102,.13);color:var(--red);font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700}
+.fn{background:rgba(255,140,0,.13);color:var(--orange);font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700}
+.cm th{background:rgba(0,200,255,.06);color:var(--text2);font-size:10px;font-weight:600;letter-spacing:.07em}
+
+/* CM INSIGHT BOX */
+.insight{border-radius:8px;padding:11px 14px;margin-top:14px;font-size:12px}
+.insight.g{background:rgba(0,229,160,.06);border:1px solid rgba(0,229,160,.2)}
+.insight.o{background:rgba(255,140,0,.06);border:1px solid rgba(255,140,0,.2)}
+.insight-title{font-family:'Rajdhani',sans-serif;font-size:12px;font-weight:700;margin-bottom:6px}
+.insight.g .insight-title{color:var(--green)}
+.insight.o .insight-title{color:var(--orange)}
+.insight ul{list-style:none;color:var(--text3)}
+.insight ul li{padding:2px 0}
+.insight ul li::before{content:'· ';color:var(--accent)}
+
+/* DATASET INFO PANEL */
+.ds-panel{background:var(--card2);border:1px solid var(--border2);border-radius:10px;padding:16px 20px}
+.ds-panel-title{font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;color:var(--accent);margin-bottom:10px;letter-spacing:.06em}
+.ds-row{display:flex;align-items:center;gap:10px;padding:5px 0;border-bottom:1px solid rgba(26,48,80,.5);font-size:12px}
+.ds-row:last-child{border-bottom:none}
+.ds-key{color:var(--text3);min-width:120px}
+.ds-val{color:#fff;font-weight:500}
+.ds-badge{display:inline-flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.ds-chip{padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;background:rgba(0,200,255,.1);color:var(--accent);border:1px solid rgba(0,200,255,.2)}
+.ds-chip.r{background:rgba(255,68,102,.1);color:var(--red);border-color:rgba(255,68,102,.2)}
+
+/* IMBALANCE WARNING */
+.imb-warn{background:rgba(255,224,102,.06);border:1px solid rgba(255,224,102,.25);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--yellow);margin-top:12px;display:flex;align-items:flex-start;gap:8px}
+.imb-warn span{font-family:'Rajdhani',sans-serif;font-weight:600}
+
+/* CHART */
+.cw{position:relative;height:250px;width:100%}
+
+/* CODE */
+.code{background:#020810;border:1px solid var(--border);border-radius:8px;padding:14px 18px;font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--text2);line-height:1.9}
+.kw{color:var(--purple)}.str{color:var(--green)}.num{color:var(--orange)}.cc{color:var(--text3)}
+
+/* RL */
+.rr{display:flex;gap:12px}
+.ri{flex:1;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center}
+.rv{font-family:'Rajdhani',sans-serif;font-size:28px;font-weight:700;line-height:1}
+.rv.pos{color:var(--green)}.rv.neg{color:var(--red)}.rv.mid{color:var(--yellow)}
+.rc{font-size:10px;color:var(--text3);margin-top:5px;line-height:1.5}
+.ra{font-family:'Rajdhani',sans-serif;font-size:12px;font-weight:700;margin-top:8px;padding:2px 9px;border-radius:4px;display:inline-block}
+.ra.bl{background:rgba(255,68,102,.12);color:var(--red)}.ra.al{background:rgba(0,229,160,.12);color:var(--green)}.ra.alt{background:rgba(255,224,102,.12);color:var(--yellow)}.ra.wr{background:rgba(153,102,255,.12);color:var(--purple)}
+
+/* RL REWARD TABLE */
+.rl-reward-table{width:100%;border-collapse:collapse;margin-top:14px;font-size:12px}
+.rl-reward-table th{padding:8px 12px;background:rgba(153,102,255,.08);border:1px solid rgba(153,102,255,.2);font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:700;color:var(--purple);text-align:left;letter-spacing:.06em}
+.rl-reward-table td{padding:8px 12px;border:1px solid var(--border);font-size:12px;color:var(--text)}
+
+/* RL BOX */
+.rlb{background:linear-gradient(135deg,rgba(153,102,255,.07),rgba(0,200,255,.04));border:1px solid rgba(153,102,255,.28);border-radius:12px;padding:22px}
+.rlt{font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;color:var(--purple);margin-bottom:14px;text-transform:uppercase;letter-spacing:.08em}
+.rleq{font-family:'Share Tech Mono',monospace;font-size:11px;background:#020810;border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text2);margin-bottom:9px}
+
+/* RL DISCLAIMER */
+.rl-disclaimer{background:rgba(255,224,102,.05);border:1px solid rgba(255,224,102,.22);border-radius:7px;padding:9px 14px;font-size:11px;color:var(--yellow);margin-top:12px;display:flex;align-items:center;gap:8px}
+
+/* MODEL ROWS */
+.mr{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)}
+.mr:last-child{border-bottom:none}
+.mk{font-size:12px;color:var(--text3)}.mval{font-size:13px;color:#fff;font-weight:500}
+.mval.ac{color:var(--accent)}.mval.g{color:var(--green)}
+
+/* MOTIV */
+.ms{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px 14px;text-align:center}
+.msi{font-size:24px;margin-bottom:8px}
+.msl{font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;color:#fff;margin-bottom:3px}
+.msd{font-size:11px;color:var(--text3);line-height:1.45}
+.msar{color:var(--accent);font-size:18px;padding:0 3px}
+
+/* PIPELINE STEPS */
+.ds{display:flex;align-items:center;gap:14px;background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:12px 16px;margin-bottom:4px}
+.dnum{width:26px;height:26px;border-radius:50%;background:rgba(0,200,255,.1);border:1px solid rgba(0,200,255,.3);color:var(--accent);font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:'Rajdhani',sans-serif}
+.dl{font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:600;color:#fff}
+.dd{font-size:11px;color:var(--text3);margin-left:auto}
+.dc{font-size:10px;color:var(--text3);font-family:'Share Tech Mono',monospace;margin-top:2px}
+.da{text-align:center;color:var(--text3);font-size:11px;margin-bottom:3px}
+
+/* FEATURE TABLE */
+.ft{width:100%;border-collapse:collapse}
+.ft th{padding:7px 11px;background:rgba(0,200,255,.05);border-bottom:1px solid var(--border);font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:700;color:var(--accent);text-align:left;letter-spacing:.06em}
+.ft td{padding:7px 11px;border-bottom:1px solid rgba(26,48,80,.4);font-size:11px;color:var(--text);font-family:'Share Tech Mono',monospace}
+.ft tr:last-child td{border-bottom:none}
+
+/* PROGRESS BARS */
+.pb-w{margin-bottom:10px}
+.pb-r{display:flex;justify-content:space-between;font-size:11px;color:var(--text3);margin-bottom:3px}
+.pb-b{height:5px;background:var(--border);border-radius:3px}
+.pb-f{height:100%;border-radius:3px}
+
+/* ALERT BANNER */
+.alert-banner{background:linear-gradient(90deg,rgba(255,68,102,.13),rgba(255,68,102,.04));border:1px solid rgba(255,68,102,.35);border-left:4px solid var(--red);border-radius:0 8px 8px 0;padding:11px 16px;display:flex;align-items:center;gap:11px;font-family:'Share Tech Mono',monospace;font-size:10px;color:#ff8099;letter-spacing:.08em;text-transform:uppercase;margin-bottom:16px;animation:alertPulse 3s infinite}
+@keyframes alertPulse{0%,100%{border-left-color:var(--red)}50%{border-left-color:#ff6680}}
+
+/* GAP STAT */
+.gap-stat{padding:16px;border-radius:10px;text-align:center;position:relative;overflow:hidden}
+.gap-stat.danger{background:rgba(255,68,102,.08);border:1px solid rgba(255,68,102,.3)}
+.gap-stat.warn{background:rgba(255,140,0,.07);border:1px solid rgba(255,140,0,.25)}
+.gap-stat.safe{background:rgba(0,229,160,.06);border:1px solid rgba(0,229,160,.2)}
+.gap-val{font-family:'Rajdhani',sans-serif;font-size:38px;font-weight:700;line-height:1}
+.danger .gap-val{color:var(--red)}.warn .gap-val{color:var(--orange)}.safe .gap-val{color:var(--green)}
+.gap-desc{font-size:10px;color:var(--text3);margin-top:5px;text-transform:uppercase;letter-spacing:1px;line-height:1.5}
+
+/* INSIGHT CARDS (Results page style) */
+.res-insight{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;display:flex;gap:12px;transition:all .2s}
+.res-insight:hover{border-color:var(--border2)}
+.res-insight.g{border-left:3px solid var(--green)}.res-insight.c{border-left:3px solid var(--accent)}.res-insight.r{border-left:3px solid var(--red)}
+.res-insight-icon{font-size:20px;flex-shrink:0}
+.res-insight h4{font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}
+.res-insight h4.g{color:var(--green)}.res-insight h4.c{color:var(--accent)}.res-insight h4.r{color:var(--red)}
+.res-insight p{font-size:11px;color:var(--text3);line-height:1.6}
+
+/* DEPLOYMENT SECTION */
+.deploy-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.deploy-item{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;background:var(--card2);border:1px solid var(--border);border-radius:8px}
+.deploy-icon{font-size:18px;flex-shrink:0;margin-top:2px}
+.deploy-title{font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;color:#fff;margin-bottom:2px}
+.deploy-desc{font-size:11px;color:var(--text3);line-height:1.5}
+
+/* ACHIEVEMENTS PANEL */
+.achieve{background:linear-gradient(135deg,#05101e,#071525);border:1px solid var(--border);border-radius:14px;padding:32px 40px;position:relative;overflow:hidden;margin-top:32px}
+.achieve::before{content:'';position:absolute;top:-1px;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--green),var(--accent),var(--purple),transparent)}
+.achieve-title{font-family:'Rajdhani',sans-serif;font-size:22px;font-weight:700;color:#fff;text-align:center;margin-bottom:20px;letter-spacing:.04em}
+.achieve-grid{grid-template-columns:repeat(auto-fit,minmax(150px,1fr)) !important;display:grid;grid-template-columns:repeat(5,1fr);gap:14px}
+.achieve-item{text-align:center;padding:14px 10px;background:var(--card);border:1px solid var(--border);border-radius:10px}
+.achieve-val{font-family:'Rajdhani',sans-serif;font-size:22px;font-weight:700;color:var(--accent);line-height:1}
+.achieve-lbl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-top:4px;line-height:1.4}
+
+/* FOOTER */
+footer{background:var(--bg2);border-top:1px solid var(--border);padding:18px 36px;margin-top:40px}
+.footer-in{max-width:1400px;margin:0 auto;display:flex;align-items:center;justify-content:space-between}
+.footer-left{font-size:11px;color:var(--text3);line-height:1.6}
+.footer-left strong{color:var(--text2)}
+.footer-right{font-size:11px;color:var(--text3);text-align:right;line-height:1.6}
+
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+
+/* === PHASE 4 CLOSED-LOOP EXTENSION === */
+.kpi-strip{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:20px}
+.kpi-x{background:linear-gradient(145deg,var(--card),var(--card2));border:1px solid var(--border2);border-radius:10px;padding:15px 16px;position:relative;overflow:hidden}
+.kpi-x:before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent)}
+.kpi-x .kv{font-family:'Rajdhani',sans-serif;font-size:29px;font-weight:700;color:#e8f5ff;line-height:1}
+.kpi-x .kl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;margin-top:6px}
+.kpi-x .ks{font-size:10px;color:var(--green);margin-top:5px}
+.phase-banner{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:13px 16px;border:1px solid rgba(0,200,255,.28);background:linear-gradient(90deg,rgba(0,200,255,.07),rgba(153,102,255,.05));border-radius:10px;margin-bottom:18px}
+.phase-banner .pb-title{font-family:'Rajdhani',sans-serif;font-weight:700;color:var(--accent);font-size:14px;letter-spacing:.06em}
+.phase-banner .pb-note{font-size:11px;color:var(--text3)}
+.loop-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;align-items:stretch}
+.loop-node{position:relative;background:var(--card2);border:1px solid var(--border2);border-radius:10px;padding:14px 10px;text-align:center;min-height:105px}
+.loop-node:not(:last-child):after{content:"→";position:absolute;right:-11px;top:38%;z-index:3;color:var(--accent);font-size:17px;font-weight:700}
+.loop-node .li{font-size:22px;margin-bottom:7px}.loop-node .ln{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:12px;color:#d9ecfa}.loop-node .ld{font-size:9px;color:var(--text3);margin-top:5px;line-height:1.35}
+.loop-node.heal{border-color:rgba(0,229,160,.45);box-shadow:inset 0 0 22px rgba(0,229,160,.04)}
+.recovery-flow{display:grid;grid-template-columns:1fr 54px 1fr 54px 1fr;align-items:center;gap:6px}
+.rfbox{background:var(--card2);border:1px solid var(--border2);border-radius:10px;padding:18px;text-align:center}.rfarr{text-align:center;color:var(--accent);font-size:24px}
+.rfnum{font-family:'Rajdhani',sans-serif;font-size:42px;font-weight:700;line-height:1}.rflab{font-size:11px;color:var(--text3);margin-top:6px;text-transform:uppercase;letter-spacing:.08em}
+.soc-controls{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.soc-controls input,.soc-controls select{background:#071321;border:1px solid var(--border2);color:#cfe8f8;border-radius:7px;padding:9px 10px;font-family:inherit;font-size:11px;outline:none}
+.soc-controls input{min-width:220px;flex:1}.soc-controls input:focus,.soc-controls select:focus{border-color:var(--accent)}
+.event-wrap{max-height:420px;overflow:auto;border:1px solid var(--border2);border-radius:9px}
+.event-wrap .dt{margin:0}.event-wrap thead th{position:sticky;top:0;background:#0b1a2b;z-index:2}
+.clickrow{cursor:pointer}.clickrow:hover{background:rgba(0,200,255,.06)}
+.badge-x{display:inline-block;padding:3px 7px;border-radius:4px;font-size:9px;font-weight:700;letter-spacing:.04em}
+.b-new{background:rgba(0,200,255,.12);color:var(--accent);border:1px solid rgba(0,200,255,.25)}
+.b-known{background:rgba(255,224,102,.10);color:var(--yellow);border:1px solid rgba(255,224,102,.25)}
+.b-repeated{background:rgba(153,102,255,.12);color:var(--purple);border:1px solid rgba(153,102,255,.28)}
+.event-detail{display:none;margin-top:14px}.event-detail.show{display:block}
+.detail-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.detail-cell{background:#071321;border:1px solid var(--border);border-radius:7px;padding:10px}.detail-cell .dk{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em}.detail-cell .dv{font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;color:#d9ecfa;margin-top:3px;word-break:break-word}
+.timeline-x{display:flex;gap:0;align-items:stretch;margin-top:12px;overflow-x:auto;padding-bottom:4px}.tlx{min-width:130px;flex:1;background:var(--card2);border:1px solid var(--border2);padding:12px;position:relative}.tlx:first-child{border-radius:8px 0 0 8px}.tlx:last-child{border-radius:0 8px 8px 0}.tlx+.tlx{border-left:0}.tlx .tn{font-size:9px;color:var(--text3);text-transform:uppercase}.tlx .tv{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:13px;color:#e5f5ff;margin-top:4px}
+.disclaimer-x{border-left:3px solid var(--yellow);background:rgba(255,224,102,.055);padding:11px 14px;border-radius:0 8px 8px 0;color:#b9c9d6;font-size:10px;line-height:1.55}
+.arch-mini{display:grid;grid-template-columns:1fr 1fr;gap:12px}.arch-col{background:var(--card2);border:1px solid var(--border2);border-radius:10px;padding:15px}
+.arch-col h4{font-family:'Rajdhani',sans-serif;color:var(--accent);font-size:13px;margin:0 0 8px}.arch-col p{font-size:10px;color:var(--text3);line-height:1.55;margin:0}
+@media(max-width:1100px){.kpi-strip{grid-template-columns:repeat(3,1fr)}.loop-grid{grid-template-columns:repeat(4,1fr)}.loop-node:after{display:none}.detail-grid{grid-template-columns:repeat(2,1fr)}}
+
+/* ── Run-driven additions (same palette as V2) ── */
+.run-strip{background:rgba(0,200,255,.045);border-bottom:1px solid var(--border);padding:7px 36px;font-size:11px;color:var(--text2)}
+.run-strip-in{max-width:1400px;margin:0 auto;display:flex;gap:18px;flex-wrap:wrap;align-items:center}
+.run-strip b{color:#fff;font-weight:600}.run-strip .mono{color:var(--accent)}
+.run-strip .warn-x{color:var(--yellow)}
+.run-missing{background:rgba(255,68,102,.12);border-bottom:1px solid var(--red);color:var(--red);padding:10px 36px;font-size:12px}
+.hist-tag{display:inline-block;margin-top:4px;font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);border:1px solid var(--border2);border-radius:4px;padding:1px 6px}
+.hist-tag.run{color:var(--accent);border-color:rgba(0,200,255,.35)}
+.hist-banner{border-left:3px solid var(--text3);background:rgba(139,170,200,.06);padding:10px 14px;border-radius:0 8px 8px 0;color:var(--text2);font-size:11px;margin-bottom:16px}
+.hist-banner b{color:#fff}
+.run-card{border-color:rgba(0,200,255,.35);box-shadow:0 0 18px rgba(0,200,255,.07)}
+.chart-off{display:flex;align-items:center;justify-content:center;height:100%;min-height:120px;color:var(--text3);font-size:11px;border:1px dashed var(--border2);border-radius:8px}
+.st{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;letter-spacing:.04em;font-family:'Rajdhani',sans-serif}
+.st-ok{background:rgba(0,229,160,.13);color:var(--green);border:1px solid rgba(0,229,160,.3)}
+.st-bad{background:rgba(255,68,102,.13);color:var(--red);border:1px solid rgba(255,68,102,.3)}
+.st-warn{background:rgba(255,140,0,.13);color:var(--orange);border:1px solid rgba(255,140,0,.3)}
+.st-info{background:rgba(0,200,255,.12);color:var(--accent);border:1px solid rgba(0,200,255,.28)}
+.st-mute{background:rgba(139,170,200,.08);color:var(--text3);border:1px solid var(--border2)}
+.ep-host{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:20px}
+.ep-host.ok{border-color:rgba(0,229,160,.35);box-shadow:0 0 22px rgba(0,229,160,.06)}
+.ep-host.bad{border-color:rgba(255,68,102,.4);box-shadow:0 0 22px rgba(255,68,102,.07)}
+.ep-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.ep-title{font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;color:#fff;letter-spacing:.04em}
+.ep-sub{font-size:11px;color:var(--text3);max-width:760px;margin-top:2px}
+.ep-verdict{text-align:right}.ep-verdict .vv{font-family:'Rajdhani',sans-serif;font-size:22px;font-weight:700}
+.ep-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:16px}
+.ep-grid>div{min-width:0}
+.ep-sec{min-width:0;overflow-x:auto}
+.ep-sec td,.ep-sec th{word-break:break-word}
+.ep-sec{background:var(--card2);border:1px solid var(--border2);border-radius:10px;padding:14px}
+.ep-sec h5{font-family:'Rajdhani',sans-serif;font-size:12px;color:var(--accent);letter-spacing:.08em;text-transform:uppercase;margin:0 0 8px}
+.ep-sec+.ep-sec{margin-top:12px}
+.hash{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--text3)}
+.fail-box{border-left:3px solid var(--red);background:rgba(255,68,102,.06);padding:10px 14px;border-radius:0 8px 8px 0;font-size:11px;color:#f2c3cc;margin-top:12px}
+.fail-box li{margin:3px 0 3px 14px}
+.ep-meter{height:8px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden;display:flex;margin-top:6px}
+.ep-meter span{display:block;height:100%}
+.pers-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.pers-col{background:#071321;border:1px solid var(--border);border-radius:7px;padding:8px}
+.pers-col .pk{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}
+.pers-col div.pe{word-break:break-word;font-family:'Share Tech Mono',monospace;font-size:11px;padding:2px 0}
+.gallery{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.gallery img{width:100%;border-radius:8px;border:1px solid var(--border);background:#fff}
+@media(max-width:1100px){.ep-grid{grid-template-columns:1fr}.gallery{grid-template-columns:1fr}}
+@media(max-width:700px){.pers-grid{grid-template-columns:1fr}.run-strip{padding:7px 16px}}
+/* ── Phone / narrow layout (original had only a 1100px breakpoint) ── */
+@media(max-width:760px){
+  .hdr{padding:0 12px}
+  .hdr-in{height:auto;flex-wrap:wrap;gap:8px;padding:8px 0}
+  .nav{order:3;width:100%;overflow-x:auto;flex-wrap:nowrap}
+  .nb{white-space:nowrap;padding:5px 12px}
+  .sbar{display:none}
+  .pg{padding:18px 16px}
+  .hero{padding:22px 18px}
+  .hgrid{grid-template-columns:1fr;gap:18px}
+  .hstats{flex-direction:row;flex-wrap:wrap;min-width:0}
+  .hstats .hs{flex:1 1 140px}
+  .g2,.g3,.g4,.deploy-grid,.arch-mini,.detail-grid{grid-template-columns:1fr !important}
+  .kpi-strip{grid-template-columns:repeat(2,minmax(0,1fr)) !important}
+  .loop-grid{grid-template-columns:repeat(2,minmax(0,1fr)) !important}
+  .achieve-grid{grid-template-columns:repeat(2,minmax(0,1fr)) !important}
+  .recovery-flow{grid-template-columns:1fr;gap:4px}.recovery-flow .rfarr{transform:rotate(90deg);text-align:center}
+  .card,.ep-sec{overflow-x:auto}
+  .card>div[style*="display:flex"],.ep-head{flex-wrap:wrap}
+  .ms{min-width:0}
+  .phase-banner{flex-direction:column;align-items:flex-start;gap:10px}
+  .sh{flex-wrap:wrap}
+  .run-strip-in{gap:6px 14px}
+}
+
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="hdr">
+  <div class="hdr-in">
+    <div class="logo">
+      <div class="logo-ic">⬡</div>
+      <div>
+        <div class="logo-t">SELF-HEALING NETWORK SECURITY</div>
+        <div class="logo-s">Self-Healing Network Security System for APT Detection</div>
+      </div>
+    </div>
+    <div class="nav">
+      <button class="nb act" data-pg="overview">Overview</button>
+      <button class="nb" data-pg="mlmodel">ML Model</button>
+      <button class="nb" data-pg="rlagent">RL Agent</button>
+      <button class="nb" data-pg="results">Results</button>
+      <button class="nb" data-pg="pipeline">Pipeline</button>
+      <button class="nb" data-pg="selfhealing">Self-Healing</button>
+      <button class="nb" data-pg="endpoint">Endpoint Healing</button>
+      <button class="nb" data-pg="threatintel">Threat Intel</button>
+    </div>
+    <div class="sbar">
+      <span class="si"><span class="dot dg"></span>RF Model Loaded</span>
+      <span class="si"><span class="dot db"></span>Q-Agent Ready</span>
+      <span class="si"><span class="dot dg"></span>Threat Memory Ready</span>
+      <span class="si"><span class="dot dy"></span>Offline Oracle-Assisted</span>
+      <span class="sim-badge" style="padding:4px 10px;font-size:10px"><span class="dot dy" style="animation:none;opacity:1;width:6px;height:6px"></span>SIMULATION MODE</span>
+    </div>
+  </div>
+</header>
+<div class="run-strip" id="runStrip"><div class="run-strip-in">
+  <span>📡 <b>Data source:</b> <span class="mono" id="rsFolder">runs/…</span></span>
+  <span><b>Run:</b> <span class="mono" data-b="run_id"></span></span>
+  <span><b>Set:</b> <span data-b="summary.evaluation_set"></span></span>
+  <span><b>Generated:</b> <span data-b="generated_at"></span></span>
+  <span class="warn-x">Network response simulated · Recovery oracle-assisted · Endpoint healing = controlled simulation</span>
+</div></div>
+
+
+
+<!-- ═══ PAGE: OVERVIEW ═══ -->
+<div id="pg-overview" class="pg show">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hgrid">
+      <div>
+        <div class="htag">🔐 Final Year Engineering Project · Information Technology · 2026–27</div>
+        <h1>Self-Healing Network<br/>Security System for <span>APTs</span></h1>
+        <div class="hero-sub2">Closed-Loop APT Defense — Detection · Memory · Verification · Recovery</div>
+        <p class="hsub">Unified Random Forest + Q-Learning security pipeline with persistent threat memory, behavioral pattern recognition, response verification and self-healing recovery. Validated offline on a merged CIC flow collection (CIC-IDS2017, CSE-CIC-IDS2018 and CIC-DDoS2019), with a separately trained UNSW-NB15 model as second-dataset evidence.</p>
+        <div class="trow" style="margin-bottom:16px">
+          <div class="ti"><strong>Developed by</strong>Nikunj Mody</div>
+          <div class="ti"><strong>Academic guidance</strong>Prof. Deepti Patole</div>
+        </div>
+        <div class="sim-badge"><span class="dot dy" style="animation:none;opacity:1"></span>System Status: PHASE 4 CLOSED-LOOP · OFFLINE EVALUATION · ENDPOINT HEALING SIMULATION</div>
+      </div>
+      <div class="hstats">
+        <div class="hs"><div class="v">98.47%</div><div class="l">CIC-IDS Accuracy</div><div class="hist-tag">historical · detection_model.py</div></div>
+        <div class="hs"><div class="v">90.43%</div><div class="l">UNSW-NB15 Accuracy</div><div class="hist-tag">historical · unsw.py</div></div>
+        <div class="hs"><div class="v" style="color:var(--green)" data-b="summary.total_reward" data-f="n">—</div><div class="l">RL Total Reward</div><div class="hist-tag run">current run · frozen policy</div></div>
+      </div>
+    </div>
+  </div>
+
+
+  <div class="phase-banner">
+    <div>
+      <div class="pb-title">PHASE 4 EVIDENCE · CURRENT RUN <span class="mono" data-b="run_id"></span></div>
+      <div class="pb-note"><span data-b="summary.total_samples" data-f="n"></span> flows · standard Phase 4 sample · frozen Q-table · no Q-learning updates during evaluation · fresh per-run threat memory</div>
+    </div>
+    <div class="sim-badge"><span class="dot dy" style="animation:none;opacity:1"></span>ORACLE-ASSISTED RECOVERY</div>
+  </div>
+  <div class="kpi-strip">
+    <div class="kpi-x"><div class="kv" data-b="view.rf.accuracy" data-f="p">—</div><div class="kl">RF Accuracy (this run)</div><div class="ks">in-sample · see Data scope</div></div>
+    <div class="kpi-x"><div class="kv" data-b="summary.actual_attacks" data-f="n">—</div><div class="kl">Ground-Truth Attacks</div><div class="ks">Current run sample</div></div>
+    <div class="kpi-x"><div class="kv" data-b="summary.initial_simulated_containments" data-f="n">—</div><div class="kl">Initially Contained</div><div class="ks"><span data-b="summary.initial_containment_rate_percent" data-f="p"></span> simulated</div></div>
+    <div class="kpi-x"><div class="kv" data-b="summary.recovery_actions_executed" data-f="n">—</div><div class="kl">Recovery Actions</div><div class="ks"><span data-b="summary.successful_simulated_recoveries" data-f="n"></span> verified simulations</div></div>
+    <div class="kpi-x"><div class="kv" data-b="summary.unique_threat_patterns" data-f="n">—</div><div class="kl">Unique Patterns</div><div class="ks">Per-run threat memory</div></div>
+    <div class="kpi-x"><div class="kv" data-b="ep.healedText">—</div><div class="kl">Endpoints Healed</div><div class="ks">SHA-256 verified · simulation</div></div>
+  </div>
+  <div class="disclaimer-x mb" style="margin-top:14px" data-b="summary.data_scope_note"></div>
+
+  <!-- PROBLEM OVERVIEW -->
+  <div class="sh"><div class="stag"></div><div class="stitle">Problem Overview</div><div class="ssub">Threat Landscape</div></div>
+  <div class="g4 mb">
+    <div class="pc r"><div class="pci">⚡</div><div class="pct">APTs on the Rise</div><div class="pcd">Multi-stage attacks remain undetected for months, silently exfiltrating sensitive data.</div><div class="pcb r">Long Dwell Time</div></div>
+    <div class="pc o"><div class="pci">🌊</div><div class="pct">DDoS &amp; Botnets</div><div class="pcd">CIC dataset confirms 13.47% DDoS, 1.59% Botnet traffic in real-world captures.</div><div class="pcb o">Volumetric Attacks</div></div>
+    <div class="pc p"><div class="pci">🔒</div><div class="pct">IDS: Detection Only</div><div class="pcd">Rule-based systems detect only known signatures — zero-day attacks bypass entirely.</div><div class="pcb p">No Automated Response</div></div>
+    <div class="pc y"><div class="pci">⏱️</div><div class="pct">Manual Response Too Slow</div><div class="pcd">Attackers move laterally in seconds. Human reaction time is insufficient.</div><div class="pcb y">Reactive &amp; Slow</div></div>
+  </div>
+
+  <!-- DATASET CONTEXT -->
+  <div class="sh"><div class="stag"></div><div class="stitle">Dataset Context</div><div class="ssub">Why Two Datasets?</div></div>
+  <div class="g2 mb">
+    <div class="ds-panel">
+      <div class="ds-panel-title">📂 Merged CIC Collection (IDS2017 · IDS2018 · DDoS2019)</div>
+      <div class="ds-row"><span class="ds-key">Total Records</span><span class="ds-val">~9,167,581 rows</span></div>
+      <div class="ds-row"><span class="ds-key">Features</span><span class="ds-val">57 network flow features + 2 label cols</span></div>
+      <div class="ds-row"><span class="ds-key">Classification</span><span class="ds-val">Binary (Benign / Attack)</span></div>
+      <div class="ds-row"><span class="ds-key">Benign Split</span><span class="ds-val">78.39% Benign · 21.61% Attack</span></div>
+      <div class="ds-row"><span class="ds-key">Role</span><span class="ds-val">Primary training &amp; evaluation dataset</span></div>
+      <div class="ds-badge">
+        <span class="ds-chip">DDoS 13.47%</span>
+        <span class="ds-chip r">DoS 4.33%</span>
+        <span class="ds-chip">Botnet 1.59%</span>
+        <span class="ds-chip r">Bruteforce 1.13%</span>
+      </div>
+    </div>
+    <div class="ds-panel">
+      <div class="ds-panel-title">📂 UNSW-NB15 Dataset</div>
+      <div class="ds-row"><span class="ds-key">Total Records</span><span class="ds-val">257,673 rows (train+test)</span></div>
+      <div class="ds-row"><span class="ds-key">Features</span><span class="ds-key" style="color:#fff">Modern synthetic + realistic traffic mix</span></div>
+      <div class="ds-row"><span class="ds-key">Training Set</span><span class="ds-val">82,332 rows · Attack: 55.06%</span></div>
+      <div class="ds-row"><span class="ds-key">Test Set</span><span class="ds-val">175,341 rows</span></div>
+      <div class="ds-row"><span class="ds-key">Role</span><span class="ds-val">Second-dataset validation (separate RF model)</span></div>
+      <div class="ds-badge">
+        <span class="ds-chip">Fuzzers</span><span class="ds-chip r">DoS</span><span class="ds-chip">Exploits</span>
+        <span class="ds-chip r">Reconnaissance</span><span class="ds-chip">Backdoor</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- MOTIVATION -->
+  <div class="sh"><div class="stag"></div><div class="stitle">System Motivation</div><div class="ssub">Why ML + RL?</div></div>
+  <div class="card mb">
+    <div class="g2" style="margin-bottom:20px">
+      <div style="background:rgba(255,68,102,.07);border:1px solid rgba(255,68,102,.2);border-radius:8px;padding:14px">
+        <div style="font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;color:var(--red)">❌ Why ML Alone is NOT Enough</div>
+        <ul style="list-style:none;margin-top:8px;font-size:12px;color:var(--text3)">
+          <li style="padding:3px 0">· Classifies traffic but takes no action</li>
+          <li style="padding:3px 0">· Static weights cannot adapt post-deployment</li>
+          <li style="padding:3px 0">· A prediction without response leaves network exposed</li>
+          <li style="padding:3px 0">· No feedback mechanism for continuous learning</li>
+        </ul>
+      </div>
+      <div style="background:rgba(153,102,255,.07);border:1px solid rgba(153,102,255,.2);border-radius:8px;padding:14px">
+        <div style="font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;color:var(--purple)">✅ Why RL Closes the Gap</div>
+        <ul style="list-style:none;margin-top:8px;font-size:12px;color:var(--text3)">
+          <li style="padding:3px 0">· Learns adaptive response policy via reward feedback</li>
+          <li style="padding:3px 0">· Maps (prediction, confidence) → ALLOW/ALERT/BLOCK</li>
+          <li style="padding:3px 0">· Learns through Q-learning updates during training; policy frozen at evaluation</li>
+          <li style="padding:3px 0">· Closed-loop architecture enables self-healing behavior</li>
+        </ul>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:0;justify-content:center">
+      <div class="ms"><div class="msi">🌐</div><div class="msl">Detection</div><div class="msd">RF classifies Attack or Benign with confidence score</div></div>
+      <div class="msar">→</div>
+      <div class="ms" style="border-color:rgba(0,200,255,.35)"><div class="msi">🧠</div><div class="msl">Decision</div><div class="msd">RL Agent selects action from Q-table based on state</div></div>
+      <div class="msar">→</div>
+      <div class="ms" style="border-color:rgba(153,102,255,.35)"><div class="msi">⚙️</div><div class="msl">Action</div><div class="msd">ALLOW / ALERT / BLOCK applied to simulated traffic</div></div>
+      <div class="msar">→</div>
+      <div class="ms" style="border-color:rgba(0,229,160,.35)"><div class="msi">🔄</div><div class="msl">Self-Healing</div><div class="msd">Verify → recover → restore endpoint; outcomes stored in threat memory</div></div>
+    </div>
+  </div>
+
+  <!-- SYSTEM ARCHITECTURE -->
+  <div class="sh"><div class="stag"></div><div class="stitle">System Architecture</div><div class="ssub">Closed-Loop Pipeline · Your USP</div></div>
+  <div class="pline mb">
+    <div class="pf">
+      <div class="pn"><span class="pni">🌐</span><div class="pnl">Network Traffic</div><div class="pns">Raw packets/flows</div></div>
+      <div class="parr"></div>
+      <div class="pn"><span class="pni">🔬</span><div class="pnl">Feature Extraction</div><div class="pns">57 flow features</div><div class="pnl2">Confidence Scoring</div></div>
+      <div class="parr"></div>
+      <div class="pn h1"><span class="pni">🌲</span><div class="pnl">ML Model</div><div class="pns">Random Forest · 50 trees</div><div class="pnl2">Prediction + Confidence</div></div>
+      <div class="parr"></div>
+      <div class="pn h2"><span class="pni">🤖</span><div class="pnl">RL Agent</div><div class="pns">Q-table · ε-greedy</div><div class="pnl2">Policy Selection</div></div>
+      <div class="parr"></div>
+      <div class="pn"><span class="pni">⚙️</span><div class="pnl">Response Engine</div><div class="pns">ALLOW / ALERT / BLOCK</div></div>
+      <div class="parr"></div>
+      <div class="pn h3"><span class="pni">🔄</span><div class="pnl">Verify &amp; Heal</div><div class="pns">Recovery · endpoint restore</div><div class="pnl2">SHA-256 verified</div></div>
+    </div>
+  </div>
+
+  <!-- NETWORK DEPLOYMENT -->
+  <div class="sh"><div class="stag"></div><div class="stitle">Proposed Network Deployment</div><div class="ssub">Enterprise Topology</div></div>
+  <div class="card mb">
+    <div class="nf">
+      <div class="nn"><div class="nbox"><div class="ni">🌍</div><div class="nbl">INTERNET</div></div><div class="nlb">External</div></div>
+      <div class="nc"></div>
+      <div class="nn"><div class="nbox"><div class="ni">📡</div><div class="nbl">ROUTER</div></div><div class="nlb">Gateway</div></div>
+      <div class="nc"></div>
+      <div class="nn"><div class="nbox"><div class="ni">🛡️</div><div class="nbl">FIREWALL</div></div><div class="nlb">Perimeter</div></div>
+      <div class="nc"></div>
+      <div class="nn"><div class="nbox sp"><div class="ni">🤖</div><div class="nbl">ML + RL IDS</div></div><div class="nlb" style="color:var(--accent)">ML + RL Engine</div></div>
+      <div class="nc"></div>
+      <div class="nn"><div class="nbox"><div class="ni">🔀</div><div class="nbl">SWITCH</div></div><div class="nlb">L2/L3</div></div>
+      <div class="nc"></div>
+      <div class="nn"><div class="nbox"><div class="ni">🖥️</div><div class="nbl">SERVERS</div></div><div class="nlb">Internal</div></div>
+      <div class="nc"></div>
+      <div class="nn"><div class="nbox"><div class="ni">💻</div><div class="nbl">ENDPOINTS</div></div><div class="nlb">Clients</div></div>
+    </div>
+    <div style="text-align:center;margin-top:12px;font-size:11px;color:var(--text3)">The Self-Healing IDS sits inline between Firewall and Switch — all traffic inspected, ML+RL decisions applied per flow</div>
+  </div>
+
+  <!-- DEPLOYMENT CONSIDERATIONS -->
+  <div class="sh"><div class="stag"></div><div class="stitle">Deployment Considerations</div><div class="ssub">Real-World Readiness</div></div>
+  <div class="card mb">
+    <div class="deploy-grid">
+      <div class="deploy-item"><div class="deploy-icon">📡</div><div><div class="deploy-title">Packet Capture Overhead</div><div class="deploy-desc">Live deployment requires integration with libpcap/Scapy. Feature extraction latency must be minimised for real-time throughput.</div></div></div>
+      <div class="deploy-item"><div class="deploy-icon">⏱️</div><div><div class="deploy-title">Feature Extraction Latency</div><div class="deploy-desc">An earlier offline run processed 2000 samples in 73.9 sec. Live feature extraction at line-rate needs hardware optimisation.</div></div></div>
+      <div class="deploy-item"><div class="deploy-icon">🔗</div><div><div class="deploy-title">Firewall Integration Possibility</div><div class="deploy-desc">BLOCK decisions can be forwarded to firewall APIs (iptables, pfSense). ALERT actions can feed SIEM platforms like Splunk or ELK.</div></div></div>
+      <div class="deploy-item"><div class="deploy-icon">🏢</div><div><div class="deploy-title">SOC Deployment Potential</div><div class="deploy-desc">System can serve as a backend engine for a Security Operations Centre dashboard — providing automated triage and response recommendations.</div></div></div>
+    </div>
+  </div>
+
+  <!-- KEY ACHIEVEMENTS -->
+  <div class="achieve">
+    <div class="achieve-title">🏆 Key Achievements</div>
+    <div class="achieve-grid">
+      <div class="achieve-item"><div class="achieve-val" style="color:var(--green)">98.47%</div><div class="achieve-lbl">CIC-IDS Accuracy</div></div>
+      <div class="achieve-item"><div class="achieve-val" style="color:var(--orange)">90.43%</div><div class="achieve-lbl">UNSW-NB15 Accuracy</div></div>
+      <div class="achieve-item"><div class="achieve-val" style="color:var(--accent)">Two Datasets</div><div class="achieve-lbl">CIC collection + UNSW-NB15</div></div>
+      <div class="achieve-item"><div class="achieve-val" style="color:var(--purple)">Q-Learning</div><div class="achieve-lbl">RL-Based Adaptive Response</div></div>
+      <div class="achieve-item"><div class="achieve-val" style="color:var(--green)">Closed-Loop</div><div class="achieve-lbl">Self-Healing Architecture</div></div>
+      <div class="achieve-item"><div class="achieve-val" style="color:var(--yellow)">SHA-256</div><div class="achieve-lbl">Verified Endpoint Healing</div></div>
+    </div>
+  </div>
+
+</div><!-- /overview -->
+
+
+<!-- ═══ PAGE: ML MODEL ═══ -->
+<div id="pg-mlmodel" class="pg">
+  <div class="sh"><div class="stag"></div><div class="stitle">ML Model — Random Forest Classifier</div><div class="ssub">detection_model.py · Actual Output</div></div>
+  <div class="hist-banner">📁 <b>Historical training results.</b> This tab reports the output of <span class="mono">detection_model.py</span> when <span class="mono">rf_model.pkl</span> was trained. These values are not regenerated by <span class="mono">pipeline.py</span>. Current-run RF metrics are shown directly below.</div>
+  <div class="card mb run-card">
+    <div class="ct">🧪 Current Run · RF on this run's <span data-b="summary.total_samples" data-f="n"></span> flows <span class="hist-tag run" style="margin-left:8px">run <span data-b="run_id"></span></span></div>
+    <div style="display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap">
+      <div>
+        <table class="cm">
+          <thead><tr><th></th><th>Pred: Benign</th><th>Pred: Attack</th></tr></thead>
+          <tbody>
+            <tr><th>Act: Benign</th><td class="tn" data-b="view.rf.tn" data-f="n"></td><td class="fp" data-b="view.rf.fp" data-f="n"></td></tr>
+            <tr><th>Act: Attack</th><td class="fn" data-b="view.rf.fn" data-f="n"></td><td class="tp" data-b="view.rf.tp" data-f="n"></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div style="flex:1;min-width:260px" id="runRfBars"></div>
+    </div>
+    <div class="disclaimer-x" style="margin-top:12px">These flows were sampled with random_state=42 and lie inside the Random Forest's 100k training sample, so this is an in-sample check, not a generalisation result. The held-out Phase 4C.5 evaluation is reported separately.</div>
+  </div>
+  <div class="g2 mb">
+    <div class="card">
+      <div class="ct">📦 CIC Data Pipeline</div>
+      <div class="ds"><div class="dnum">1</div><div><div class="dl">Data Loading</div><div class="dc">pd.read_parquet("cic-collection.parquet")</div></div><div class="dd">9,167,581 × 59</div></div>
+      <div class="da">↓</div>
+      <div class="ds"><div class="dnum">2</div><div><div class="dl">Random Sampling</div><div class="dc">df.sample(100000, random_state=42)</div></div><div class="dd">100K samples</div></div>
+      <div class="da">↓</div>
+      <div class="ds"><div class="dnum">3</div><div><div class="dl">Feature Selection</div><div class="dc">X = df.drop(['Label','ClassLabel','target'])</div></div><div class="dd">57 features</div></div>
+      <div class="da">↓</div>
+      <div class="ds"><div class="dnum">4</div><div><div class="dl">Binary Label Encoding</div><div class="dc">0 = Benign · 1 = Attack</div></div><div class="dd">Binary target</div></div>
+      <div class="da">↓</div>
+      <div class="ds"><div class="dnum">5</div><div><div class="dl">Train / Test Split</div><div class="dc">train_test_split(X, y, test_size=0.2)</div></div><div class="dd">80K train / 20K test</div></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div class="card">
+        <div class="ct">🌲 Model Config — Actual</div>
+        <div class="mr"><span class="mk">Algorithm</span><span class="mval ac">RandomForestClassifier</span></div>
+        <div class="mr"><span class="mk">n_estimators</span><span class="mval">50 decision trees</span></div>
+        <div class="mr"><span class="mk">Dataset Shape</span><span class="mval">(9,167,581 × 59)</span></div>
+        <div class="mr"><span class="mk">Training Time</span><span class="mval">12.10 seconds</span></div>
+        <div class="mr"><span class="mk">Prediction Time</span><span class="mval">0.1684 seconds</span></div>
+        <div class="mr"><span class="mk">Saved Model</span><span class="mval g">rf_model.pkl ✓</span></div>
+        <div class="mr"><span class="mk">Actual Accuracy</span><span class="mval g">0.98475 → 98.47%</span></div>
+      </div>
+      <div class="card">
+        <div class="ct">📊 CIC Label Distribution (Full Dataset)</div>
+        <div class="pb-w"><div class="pb-r"><span>Benign</span><span style="color:var(--green)">78.39%</span></div><div class="pb-b"><div class="pb-f" style="width:78.39%;background:var(--green)"></div></div></div>
+        <div class="pb-w"><div class="pb-r"><span>DDoS</span><span style="color:var(--red)">13.47%</span></div><div class="pb-b"><div class="pb-f" style="width:13.47%;background:var(--red)"></div></div></div>
+        <div class="pb-w"><div class="pb-r"><span>DoS</span><span style="color:var(--orange)">4.33%</span></div><div class="pb-b"><div class="pb-f" style="width:4.33%;background:var(--orange)"></div></div></div>
+        <div class="pb-w"><div class="pb-r"><span>Botnet</span><span style="color:var(--purple)">1.59%</span></div><div class="pb-b"><div class="pb-f" style="width:1.59%;background:var(--purple)"></div></div></div>
+        <div class="pb-w"><div class="pb-r"><span>Bruteforce</span><span style="color:var(--yellow)">1.13%</span></div><div class="pb-b"><div class="pb-f" style="width:1.13%;background:var(--yellow)"></div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CM + Report -->
+  <div class="sh"><div class="stag"></div><div class="stitle">CIC — Confusion Matrix &amp; Classification Report</div></div>
+  <div class="g2 mb">
+    <div class="card">
+      <div class="ct">Binary Confusion Matrix — Actual Output</div>
+      <div style="display:flex;gap:24px;align-items:flex-start">
+        <div>
+          <table class="cm">
+            <thead><tr><th></th><th>Pred: Benign</th><th>Pred: Attack</th></tr></thead>
+            <tbody>
+              <tr><th>Act: Benign</th><td class="tn">15,562</td><td class="fp">47</td></tr>
+              <tr><th>Act: Attack</th><td class="fn">258</td><td class="tp">4,133</td></tr>
+            </tbody>
+          </table>
+          <div style="font-size:10px;color:var(--text3);text-align:center;margin-top:5px">Test: 20,000 samples</div>
+        </div>
+        <div style="flex:1">
+          <div class="pb-w"><div class="pb-r"><span>Benign Precision</span><span style="color:var(--green)">0.98</span></div><div class="pb-b"><div class="pb-f" style="width:98%;background:var(--green)"></div></div></div>
+          <div class="pb-w"><div class="pb-r"><span>Benign Recall</span><span style="color:var(--green)">1.00</span></div><div class="pb-b"><div class="pb-f" style="width:100%;background:var(--green)"></div></div></div>
+          <div class="pb-w"><div class="pb-r"><span>Attack Precision</span><span style="color:var(--accent)">0.99</span></div><div class="pb-b"><div class="pb-f" style="width:99%;background:var(--accent)"></div></div></div>
+          <div class="pb-w"><div class="pb-r"><span>Attack Recall</span><span style="color:var(--accent)">0.94</span></div><div class="pb-b"><div class="pb-f" style="width:94%;background:var(--accent)"></div></div></div>
+          <div style="margin-top:10px;padding:10px;background:rgba(0,229,160,.06);border:1px solid rgba(0,229,160,.2);border-radius:6px;text-align:center">
+            <div style="font-family:'Rajdhani',sans-serif;font-size:26px;font-weight:700;color:var(--green)">0.98475</div>
+            <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em">Actual Accuracy</div>
+          </div>
+        </div>
+      </div>
+      <div class="insight g">
+        <div class="insight-title">CIC Dataset Insights</div>
+        <ul>
+          <li>Very low false positives (47) — high precision on benign detection</li>
+          <li>Strong attack recall (0.94) — system detects 94% of real attacks</li>
+          <li>High detection stability across DDoS, DoS, Botnet, Bruteforce</li>
+          <li>Clear separation between attack and benign traffic patterns</li>
+        </ul>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ct">Classification Report — Actual Output</div>
+      <table class="dt">
+        <thead><tr><th>Class</th><th>Precision</th><th>Recall</th><th>F1</th><th>Support</th></tr></thead>
+        <tbody>
+          <tr><td class="ben">0 — Benign</td><td>0.98</td><td>1.00</td><td>0.99</td><td>15,609</td></tr>
+          <tr><td class="atk">1 — Attack</td><td>0.99</td><td>0.94</td><td>0.96</td><td>4,391</td></tr>
+          <tr style="background:rgba(0,200,255,.04)"><td style="color:var(--accent);font-weight:600">Accuracy</td><td colspan="3" style="text-align:center;color:var(--green);font-weight:700;font-family:'Rajdhani',sans-serif;font-size:15px">0.98 (20,000 samples)</td><td>20,000</td></tr>
+          <tr><td>Macro Avg</td><td>0.99</td><td>0.97</td><td>0.98</td><td>20,000</td></tr>
+          <tr><td>Weighted Avg</td><td>0.98</td><td>0.98</td><td>0.98</td><td>20,000</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Per-Attack CMs -->
+  <div class="sh"><div class="stag"></div><div class="stitle">Per-Attack One-vs-All Confusion Matrices — Actual</div></div>
+  <div class="g4 mb">
+    <div class="card" style="text-align:center"><div class="ct" style="justify-content:center">DDoS Detection</div>
+      <table class="cm" style="margin:0 auto"><thead><tr><th></th><th>Not DDoS</th><th>DDoS</th></tr></thead><tbody>
+        <tr><th>Not DDoS</th><td class="tn">17,343</td><td class="fp">9</td></tr>
+        <tr><th>DDoS</th><td class="fn">13</td><td class="tp">2,635</td></tr>
+      </tbody></table></div>
+    <div class="card" style="text-align:center"><div class="ct" style="justify-content:center">DoS Detection</div>
+      <table class="cm" style="margin:0 auto"><thead><tr><th></th><th>Not DoS</th><th>DoS</th></tr></thead><tbody>
+        <tr><th>Not DoS</th><td class="tn">19,173</td><td class="fp">7</td></tr>
+        <tr><th>DoS</th><td class="fn">20</td><td class="tp">800</td></tr>
+      </tbody></table></div>
+    <div class="card" style="text-align:center"><div class="ct" style="justify-content:center">Botnet Detection</div>
+      <table class="cm" style="margin:0 auto"><thead><tr><th></th><th>Not Bot</th><th>Botnet</th></tr></thead><tbody>
+        <tr><th>Not Bot</th><td class="tn">19,672</td><td class="fp">2</td></tr>
+        <tr><th>Botnet</th><td class="fn">10</td><td class="tp">316</td></tr>
+      </tbody></table></div>
+    <div class="card" style="text-align:center"><div class="ct" style="justify-content:center">Bruteforce Detection</div>
+      <table class="cm" style="margin:0 auto"><thead><tr><th></th><th>Not BF</th><th>Bruteforce</th></tr></thead><tbody>
+        <tr><th>Not BF</th><td class="tn">19,761</td><td class="fp">0</td></tr>
+        <tr><th>Bruteforce</th><td class="fn">3</td><td class="tp">236</td></tr>
+      </tbody></table></div>
+  </div>
+
+  <!-- Feature Importance -->
+  <div class="sh"><div class="stag"></div><div class="stitle">Top 10 Feature Importances — Actual (rf_model.pkl)</div></div>
+  <div class="card mb"><div class="cw" style="height:250px"><canvas id="cicFeatChart"></canvas></div></div>
+
+  <!-- Feature Contribution -->
+  <div class="sh"><div class="stag"></div><div class="stitle">Feature Contribution Analysis — Actual Output</div></div>
+  <div class="g2">
+    <div class="card">
+      <div class="ct" style="color:var(--red)">⬆ Features → ATTACK Traffic</div>
+      <table class="ft">
+        <thead><tr><th>Feature</th><th>Attack Mean</th><th>Benign Mean</th><th>Diff</th></tr></thead>
+        <tbody>
+          <tr><td>Flow Bytes/s</td><td>1.163e+07</td><td>2.640e+05</td><td style="color:var(--red)">+1.137e+07</td></tr>
+          <tr><td>Flow IAT Min</td><td>3.506e+06</td><td>-7.119e+06</td><td style="color:var(--red)">+1.062e+07</td></tr>
+          <tr><td>Fwd IAT Min</td><td>3.717e+06</td><td>-6.875e+06</td><td style="color:var(--red)">+1.059e+07</td></tr>
+          <tr><td>Fwd IAT Total</td><td>1.450e+07</td><td>4.565e+06</td><td style="color:var(--red)">+9.933e+06</td></tr>
+          <tr><td>Flow Duration</td><td>1.491e+07</td><td>5.215e+06</td><td style="color:var(--red)">+9.696e+06</td></tr>
+          <tr><td>Idle Min</td><td>1.147e+07</td><td>6.436e+06</td><td style="color:var(--red)">+5.032e+06</td></tr>
+          <tr><td>Idle Mean</td><td>1.193e+07</td><td>1.011e+07</td><td style="color:var(--red)">+1.811e+06</td></tr>
+          <tr><td>Packet Length Variance</td><td>5.874e+05</td><td>8.582e+04</td><td style="color:var(--red)">+5.016e+05</td></tr>
+          <tr><td>Bwd IAT Std</td><td>1.510e+06</td><td>1.140e+06</td><td style="color:var(--red)">+3.703e+05</td></tr>
+          <tr><td>Fwd IAT Mean</td><td>5.428e+06</td><td>5.122e+06</td><td style="color:var(--red)">+3.065e+05</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="card">
+      <div class="ct" style="color:var(--green)">⬇ Features → BENIGN Traffic</div>
+      <table class="ft">
+        <thead><tr><th>Feature</th><th>Benign Mean</th><th>Attack Mean</th><th>Diff</th></tr></thead>
+        <tbody>
+          <tr><td>Bwd IAT Min</td><td>5.105e+05</td><td>2.934e+05</td><td style="color:var(--green)">-2.171e+05</td></tr>
+          <tr><td>Idle Std</td><td>2.702e+06</td><td>5.956e+05</td><td style="color:var(--green)">-2.106e+06</td></tr>
+          <tr><td>Fwd IAT Std</td><td>6.434e+06</td><td>3.728e+06</td><td style="color:var(--green)">-2.706e+06</td></tr>
+          <tr><td>Flow IAT Std</td><td>6.432e+06</td><td>2.994e+06</td><td style="color:var(--green)">-3.437e+06</td></tr>
+          <tr><td>Idle Max</td><td>1.631e+07</td><td>1.245e+07</td><td style="color:var(--green)">-3.856e+06</td></tr>
+          <tr><td>Fwd IAT Max</td><td>1.801e+07</td><td>1.269e+07</td><td style="color:var(--green)">-5.315e+06</td></tr>
+          <tr><td>Flow IAT Max</td><td>1.849e+07</td><td>1.302e+07</td><td style="color:var(--green)">-5.471e+06</td></tr>
+          <tr><td>Bwd IAT Total</td><td>1.060e+07</td><td>4.500e+06</td><td style="color:var(--green)">-6.099e+06</td></tr>
+          <tr><td>Fwd Seg Size Min</td><td>19.72</td><td>-6.325e+06</td><td style="color:var(--green)">-6.325e+06</td></tr>
+          <tr><td>Fwd Header Length</td><td>226.41</td><td>-6.923e+07</td><td style="color:var(--green)">-6.923e+07</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div><!-- /mlmodel -->
+
+
+<!-- ═══ PAGE: RL AGENT ═══ -->
+<div id="pg-rlagent" class="pg">
+  <div class="sh"><div class="stag"></div><div class="stitle">RL Agent — Simulated Adaptive Response Framework</div><div class="ssub">rl_agent.py · train_rl.py · current run</div></div>
+
+  <div class="rl-disclaimer">⚠️ <span>Disclaimer:</span> The RL module currently operates in a simulated decision environment using pre-recorded dataset samples, not live network traffic.</div>
+
+  <div class="g2 mb" style="margin-top:16px">
+    <div class="rlb">
+      <div class="rlt">🤖 Q-Learning Policy</div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:12px">The RL agent learns an adaptive response policy using reward-based feedback. It maps (prediction, confidence) state tuples to optimal network actions through iterative Q-table updates.</div>
+      <div class="rleq">State = (prediction, conf_bucket)<br/>conf_bucket = int(confidence × 10)</div>
+      <div class="rleq">Actions = ["ALLOW", "ALERT", "BLOCK"]</div>
+      <div class="rleq">α=0.1 · γ=0.9 · ε: 1.0 → 0.05 (decay 0.9, train_rl.py) · ε=0 at evaluation</div>
+      <div class="rleq">Q[s,a] += α × (reward − Q[s,a])  · terminal per-flow decision</div>
+      <div style="margin-top:12px">
+        <div class="code"><span class="kw">def</span> choose_action(state):<br/>
+&nbsp;&nbsp;<span class="kw">if</span> random() &lt; epsilon: <span class="cc"># explore</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">return</span> random.choice(actions)<br/>
+&nbsp;&nbsp;<span class="kw">return</span> actions[argmax(Q[state])] <span class="cc"># exploit</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ct">💰 Reward Function — Detailed</div>
+      <table class="rl-reward-table">
+        <thead><tr><th>Ground truth</th><th>Action</th><th>Reward</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td>Attack</td><td class="tblk">BLOCK</td><td style="color:var(--green)">+10</td><td>Correct containment</td></tr>
+          <tr><td>Attack</td><td class="talt">ALERT</td><td style="color:var(--yellow)">+2</td><td>Visibility, not contained</td></tr>
+          <tr><td>Attack</td><td class="tal">ALLOW</td><td style="color:var(--red)">−15</td><td>Most dangerous outcome</td></tr>
+          <tr><td>Benign</td><td class="tal">ALLOW</td><td style="color:var(--green)">+5</td><td>Correct decision</td></tr>
+          <tr><td>Benign</td><td class="talt">ALERT</td><td style="color:var(--yellow)">−2</td><td>Alert fatigue</td></tr>
+          <tr><td>Benign</td><td class="tblk">BLOCK</td><td style="color:var(--red)">−10</td><td>False block</td></tr>
+        </tbody>
+      </table>
+      <div style="font-size:10px;color:var(--text3);margin-top:6px">Exact values from <span class="mono">get_reward()</span> in rl_agent.py.</div>
+      <div style="margin-top:18px">
+        <div class="ct">📈 Current Run — Frozen-Policy Evaluation</div>
+        <div style="text-align:center;padding:14px;background:var(--card2);border-radius:8px;border:1px solid var(--border);margin-bottom:10px">
+          <div style="font-family:'Rajdhani',sans-serif;font-size:36px;font-weight:700;color:var(--green)" data-b="summary.total_reward" data-f="n">—</div>
+          <div style="font-size:10px;color:var(--text3);text-transform:uppercase;margin-top:2px">Total Reward — run <span data-b="run_id"></span></div>
+        </div>
+        <div style="font-size:12px;color:var(--text3)">ALLOW: <span data-b="view.actions.ALLOW" data-f="n"></span> · ALERT: <span data-b="view.actions.ALERT" data-f="n"></span> · BLOCK: <span data-b="view.actions.BLOCK" data-f="n"></span> — <span data-b="summary.total_samples" data-f="n"></span> decisions · Q-table not updated</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:8px">Historical standalone simulation (simulation.py, earlier agent version): 25,324 reward over 5,000 steps.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Charts -->
+  <div class="g2 mb">
+    <div class="card"><div class="ct">📈 Cumulative Reward — Current Run (frozen policy, every 100 flows)</div><div class="cw"><canvas id="rlRewardChart"></canvas></div></div>
+    <div class="card"><div class="ct">🎯 Action Distribution (Current Run)</div><div class="cw"><canvas id="rlActionChart"></canvas></div></div>
+  </div>
+
+  <!-- Log -->
+  <div class="sh"><div class="stag"></div><div class="stitle">Decision Log — Current Run (every 300th flow)</div><div class="ssub">security_events.csv</div></div>
+  <div class="card">
+    <table class="dt">
+      <thead><tr><th>Step</th><th>ML Prediction</th><th>Confidence</th><th>RL State</th><th>RL Action</th><th>Ground Truth</th><th>Reward</th></tr></thead>
+      <tbody id="rlLogRows"></tbody>
+    </table>
+  </div>
+</div><!-- /rlagent -->
+
+
+<!-- ═══ PAGE: RESULTS ═══ -->
+<div id="pg-results" class="pg">
+
+  <!-- CIC -->
+  <div class="sh"><div class="stag"></div><div class="stitle">CIC-IDS — Actual Results</div><div class="ssub">detection_model.py · historical</div></div>
+  <div class="g4 mb">
+    <div class="met"><div class="mv g">98.47%</div><div class="ml">Accuracy (0.98475)</div></div>
+    <div class="met"><div class="mv">0.98 / 0.99</div><div class="ml">Precision (Benign/Attack)</div></div>
+    <div class="met"><div class="mv">1.00 / 0.94</div><div class="ml">Recall (Benign/Attack)</div></div>
+    <div class="met"><div class="mv">0.99 / 0.96</div><div class="ml">F1 Score (Benign/Attack)</div></div>
+  </div>
+  <div class="g2 mb">
+    <div class="card">
+      <div class="ct">Confusion Matrix — CIC Actual [[15562,47],[258,4133]]</div>
+      <div style="display:flex;gap:24px;align-items:flex-start">
+        <div>
+          <table class="cm">
+            <thead><tr><th></th><th>Pred: Benign</th><th>Pred: Attack</th></tr></thead>
+            <tbody>
+              <tr><th>Act: Benign</th><td class="tn">15,562</td><td class="fp">47</td></tr>
+              <tr><th>Act: Attack</th><td class="fn">258</td><td class="tp">4,133</td></tr>
+            </tbody>
+          </table>
+          <div style="font-size:10px;color:var(--text3);text-align:center;margin-top:5px">Total: 20,000 test samples</div>
+        </div>
+        <div style="flex:1;font-size:12px;color:var(--text3);line-height:2.3">
+          <div>✅ TN: <strong style="color:var(--green)">15,562</strong> correctly benign</div>
+          <div>✅ TP: <strong style="color:var(--green)">4,133</strong> correctly attack</div>
+          <div>⚠️ FP: <strong style="color:var(--red)">47</strong> benign → misclassified attack</div>
+          <div>⚠️ FN: <strong style="color:var(--orange)">258</strong> attacks → missed</div>
+        </div>
+      </div>
+      <div class="insight g">
+        <div class="insight-title">CIC Interpretation</div>
+        <ul>
+          <li>Very low false positives — minimal alert fatigue</li>
+          <li>High detection stability across all attack classes</li>
+          <li>Strong separation between attack and benign traffic</li>
+        </ul>
+      </div>
+    </div>
+    <div class="card"><div class="ct">Feature Importances — CIC (Actual rf_model.pkl)</div><div class="cw" style="height:250px"><canvas id="cicFeatChartR"></canvas></div></div>
+  </div>
+
+  <!-- UNSW -->
+  <div class="sh"><div class="stag"></div><div class="stitle">UNSW-NB15 — Actual Results</div><div class="ssub">unsw.py · historical</div></div>
+  <div class="g4 mb">
+    <div class="met"><div class="mv o">90.43%</div><div class="ml">Accuracy (0.9043)</div></div>
+    <div class="met"><div class="mv y">0.78 / 0.99</div><div class="ml">Precision (Normal/Attack)</div></div>
+    <div class="met"><div class="mv y">0.98 / 0.87</div><div class="ml">Recall (Normal/Attack)</div></div>
+    <div class="met"><div class="mv y">0.87 / 0.93</div><div class="ml">F1 Score (Normal/Attack)</div></div>
+  </div>
+  <div class="g2 mb">
+    <div class="card">
+      <div class="ct">Confusion Matrix — UNSW Actual [[54720,1280],[15494,103847]]</div>
+      <div style="display:flex;gap:24px;align-items:flex-start">
+        <div>
+          <table class="cm">
+            <thead><tr><th></th><th>Pred: Normal</th><th>Pred: Attack</th></tr></thead>
+            <tbody>
+              <tr><th>Act: Normal</th><td class="tn">54,720</td><td class="fp">1,280</td></tr>
+              <tr><th>Act: Attack</th><td class="fn">15,494</td><td class="tp">103,847</td></tr>
+            </tbody>
+          </table>
+          <div style="font-size:10px;color:var(--text3);text-align:center;margin-top:5px">Train: 82,332 · Test: 175,341</div>
+        </div>
+        <div style="flex:1">
+          <div style="background:rgba(255,140,0,.07);border:1px solid rgba(255,140,0,.2);border-radius:8px;padding:10px;font-size:12px;color:var(--text3);margin-bottom:10px">
+            <div style="color:var(--orange);font-weight:700;font-family:'Rajdhani',sans-serif;margin-bottom:4px">Timing Stats</div>
+            <div>Training: <strong style="color:#fff">9.29 sec</strong></div>
+            <div>Prediction: <strong style="color:#fff">1.60 sec</strong></div>
+            <div>n_estimators: <strong style="color:#fff">100 trees</strong></div>
+          </div>
+          <div class="imb-warn">⚠️ <span>Weighted metrics used</span> due to class imbalance in UNSW-NB15 (Attack: 55.06% vs Normal: 44.94% in training set).</div>
+        </div>
+      </div>
+      <div class="insight o">
+        <div class="insight-title">UNSW Interpretation</div>
+        <ul>
+          <li>Higher false negatives due to increased traffic diversity (9 attack categories)</li>
+          <li>Lower normal precision (0.78) reflects realistic generalization challenge</li>
+          <li>A separate RF trained and tested on UNSW-NB15 shows the approach works on a second dataset (the CIC model itself is not tested on UNSW)</li>
+        </ul>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ct">Classification Report — UNSW Actual</div>
+      <table class="dt">
+        <thead><tr><th>Class</th><th>Precision</th><th>Recall</th><th>F1</th><th>Support</th></tr></thead>
+        <tbody>
+          <tr><td class="ben">0 — Normal</td><td>0.78</td><td>0.98</td><td>0.87</td><td>56,000</td></tr>
+          <tr><td class="atk">1 — Attack</td><td>0.99</td><td>0.87</td><td>0.93</td><td>119,341</td></tr>
+          <tr style="background:rgba(255,140,0,.04)"><td style="color:var(--orange);font-weight:600">Accuracy</td><td colspan="3" style="text-align:center;color:var(--orange);font-weight:700;font-family:'Rajdhani',sans-serif;font-size:15px">0.9043</td><td>175,341</td></tr>
+          <tr><td>Macro Avg</td><td>0.88</td><td>0.92</td><td>0.90</td><td>175,341</td></tr>
+          <tr><td>Weighted Avg</td><td>0.92</td><td>0.90</td><td>0.91</td><td>175,341</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- UNSW Feature Chart -->
+  <div class="sh"><div class="stag"></div><div class="stitle">UNSW-NB15 — Top 10 Feature Importances (Actual)</div></div>
+  <div class="card mb"><div class="cw" style="height:250px"><canvas id="unswFeatChart"></canvas></div></div>
+
+  <!-- Comparison -->
+  <div class="sh"><div class="stag"></div><div class="stitle">Dataset Performance Comparison</div></div>
+  <div class="card"><div class="cw" style="height:250px"><canvas id="compareChart"></canvas></div></div>
+
+
+  <!-- ══ SECURITY GAP ANALYSIS ══ -->
+  <div class="sh"><div class="stag"></div><div class="stitle">🚨 Security Gap Analysis</div><div class="ssub">Critical — Pipeline Output</div></div>
+  <div class="alert-banner"><span style="font-size:14px">⚠</span>Current run <span class="mono" data-b="run_id" style="margin:0 6px"></span> — residual risk in initial ALLOW / ALERT / BLOCK decisions</div>
+
+  <div class="g3 mb">
+    <div class="gap-stat danger"><div class="gap-val" data-b="view.risk.ALLOW.risk_pct" data-f="p">—</div><div class="gap-desc">⚠ ALLOW Missed-Attack Rate<br/><span data-b="view.risk.ALLOW.risk" data-f="n"></span> malicious out of <span data-b="view.risk.ALLOW.total" data-f="n"></span> allowed</div></div>
+    <div class="gap-stat warn"><div class="gap-val" data-b="view.risk.ALERT.risk_pct" data-f="p">—</div><div class="gap-desc">⚠ ALERT Attack Ratio<br/><span data-b="view.risk.ALERT.risk" data-f="n"></span> attacks out of <span data-b="view.risk.ALERT.total" data-f="n"></span> alerted</div></div>
+    <div class="gap-stat danger"><div class="gap-val" data-b="view.risk.BLOCK.risk_pct" data-f="p">—</div><div class="gap-desc">⚠ BLOCK False-Block Rate<br/><span data-b="view.risk.BLOCK.risk" data-f="n"></span> false blocks out of <span data-b="view.risk.BLOCK.total" data-f="n"></span> blocked</div></div>
+  </div>
+
+  <div class="g2 mb">
+    <div class="card">
+      <div class="ct">📊 Action Risk Segmentation — Safe vs Malicious (current run)</div>
+      <div class="cw" style="height:250px"><canvas id="secGapChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="ct">Risk Breakdown — Current Run (<span data-b="summary.total_samples" data-f="n"></span> flows)</div>
+      <table class="dt">
+        <thead><tr><th>Action</th><th>Total</th><th>Safe</th><th>Risk</th><th>Risk %</th></tr></thead>
+        <tbody id="riskRows"></tbody>
+      </table>
+      <div style="margin-top:14px;padding:11px 14px;background:rgba(153,102,255,.07);border:1px solid rgba(153,102,255,.2);border-radius:7px;font-size:11px;color:var(--text3);line-height:1.7">
+        <strong style="color:var(--purple)">Self-Healing Response:</strong> During training, wrong decisions are penalised (attack → ALLOW <strong style="color:var(--red)">−15</strong>, benign → BLOCK <strong style="color:var(--red)">−10</strong>). At evaluation the Q-table is frozen; residual misses are handled by <strong style="color:var(--green)">verification → recovery → endpoint healing</strong>.
+      </div>
+      <div style="margin-top:16px;display:flex;flex-direction:column;gap:8px">
+        <div class="res-insight g"><div class="res-insight-icon">🎯</div><div><h4 class="g">Detection on this run</h4><p>RF accuracy <span data-b="view.rf.accuracy" data-f="p"></span>, attack recall <span data-b="view.rf.recall" data-f="p"></span> (in-sample). Historical test accuracy 98.47% (CIC) and 90.43% (UNSW).</p></div></div>
+        <div class="res-insight c"><div class="res-insight-icon">🔄</div><div><h4 class="c">Recovery closes the gap</h4><p><span data-b="summary.initial_containment_rate_percent" data-f="p"></span> initial simulated containment → <span data-b="summary.post_recovery_containment_rate_percent" data-f="p"></span> after oracle-assisted recovery.</p></div></div>
+        <div class="res-insight r"><div class="res-insight-icon">⚠</div><div><h4 class="r">Honest limitation</h4><p><span data-b="view.risk.ALLOW.risk_pct" data-f="p"></span> of ALLOW decisions were attacks missed by the RF; recovery uses ground truth after the action and is not live detection.</p></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ CLASSIFICATION REPORTS ══ -->
+  <div class="sh"><div class="stag"></div><div class="stitle">Classification Reports — Both Datasets</div><div class="ssub">Actual Output</div></div>
+  <div class="g2 mb">
+    <div class="card">
+      <div style="margin-bottom:10px;font-family:'Rajdhani',sans-serif;font-size:12px;color:var(--accent);letter-spacing:.06em">CIC-IDS DATASET</div>
+      <table class="dt">
+        <thead><tr><th>Class</th><th>Precision</th><th>Recall</th><th>F1</th><th>Support</th></tr></thead>
+        <tbody>
+          <tr><td class="ben">Benign (0)</td><td>0.98</td><td>1.00</td><td>0.99</td><td>15,609</td></tr>
+          <tr><td class="atk">Attack (1)</td><td>0.99</td><td>0.94</td><td>0.96</td><td>4,391</td></tr>
+          <tr style="background:rgba(0,229,160,.04)"><td style="color:var(--green);font-weight:700">Accuracy</td><td colspan="3" style="text-align:center;color:var(--green);font-weight:700;font-family:'Rajdhani',sans-serif;font-size:15px">98.47%</td><td>20,000</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="card">
+      <div style="margin-bottom:10px;font-family:'Rajdhani',sans-serif;font-size:12px;color:var(--orange);letter-spacing:.06em">UNSW-NB15 DATASET</div>
+      <table class="dt">
+        <thead><tr><th>Class</th><th>Precision</th><th>Recall</th><th>F1</th><th>Support</th></tr></thead>
+        <tbody>
+          <tr><td class="ben">Normal (0)</td><td>0.78</td><td>0.98</td><td>0.87</td><td>56,000</td></tr>
+          <tr><td class="atk">Attack (1)</td><td>0.99</td><td>0.87</td><td>0.93</td><td>119,341</td></tr>
+          <tr style="background:rgba(255,140,0,.04)"><td style="color:var(--orange);font-weight:700">Accuracy</td><td colspan="3" style="text-align:center;color:var(--orange);font-weight:700;font-family:'Rajdhani',sans-serif;font-size:15px">90.43%</td><td>175,341</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══ REPRESENTATIVE EVENTS ══ -->
+  <div class="sh"><div class="stag"></div><div class="stitle">Representative Decisions — Real Events From This Run</div><div class="ssub">security_events.csv</div></div>
+  <div class="card mb">
+    <table class="dt">
+      <thead><tr><th>Case</th><th>Event</th><th>ML Output</th><th>Confidence</th><th>RL Action</th><th>True Label</th><th>Healing / Recovery</th><th>Reward</th></tr></thead>
+      <tbody id="reprRows"></tbody>
+    </table>
+    <div style="margin-top:12px;padding:11px;background:rgba(0,200,255,.05);border:1px solid rgba(0,200,255,.15);border-radius:7px;font-size:11px;color:var(--text3)">
+      Each row is the first event in this run matching the case. Cases with no matching event are shown as <strong style="color:var(--text2)">not observed in this run</strong> rather than invented.
+    </div>
+  </div>
+
+</div><!-- /results -->
+
+
+<!-- ═══ PAGE: PIPELINE ═══ -->
+<div id="pg-pipeline" class="pg">
+  <div class="sh"><div class="stag"></div><div class="stitle">Full Pipeline — Dataset-Based Threat Simulation</div><div class="ssub">pipeline.py · <span data-b="summary.total_samples" data-f="n"></span> samples · run <span data-b="run_id"></span></div></div>
+
+  <div class="card mb">
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(0,229,160,.08);border:1px solid rgba(0,229,160,.25);border-radius:8px;padding:8px 20px">
+        <span style="color:var(--green);font-size:15px">✓</span>
+        <span style="font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;color:var(--green)">PIPELINE COMPLETE — Total Reward: <span data-b="summary.total_reward" data-f="n"></span> · <span data-b="summary.total_samples" data-f="n"></span> decisions · Run <span data-b="run_id"></span></span>
+      </div>
+    </div>
+    <div style="display:flex;align-items:stretch;gap:14px;flex-wrap:wrap">
+      <div style="flex:1;min-width:240px;background:var(--card2);border:1px solid var(--border2);border-radius:10px;padding:18px">
+        <div style="font-family:'Rajdhani',sans-serif;font-size:12px;color:var(--accent);font-weight:700;margin-bottom:10px;text-transform:uppercase;letter-spacing:.08em">① ML Detection</div>
+        <div class="code"><span class="cc"># Load model</span><br/>
+model = joblib.load(<span class="str">"rf_model.pkl"</span>)<br/>
+pred = model.predict(sample)[<span class="num">0</span>]<br/>
+prob = max(model.predict_proba(sample)[<span class="num">0</span>])<br/><br/>
+<span id="pipeDetectLog"></span></div>
+      </div>
+      <div style="display:flex;align-items:center;color:var(--accent);font-size:22px">→</div>
+      <div style="flex:1;min-width:240px;background:rgba(153,102,255,.05);border:1px solid rgba(153,102,255,.25);border-radius:10px;padding:18px">
+        <div style="font-family:'Rajdhani',sans-serif;font-size:12px;color:var(--purple);font-weight:700;margin-bottom:10px;text-transform:uppercase;letter-spacing:.08em">② RL Decision</div>
+        <div class="code"><span class="cc"># State + frozen policy selection</span><br/>
+state = agent.get_state(pred, prob)<br/>
+action = agent.choose_action(state, training=<span class="kw">False</span>)<br/><br/>
+<span id="pipeDecideLog"></span></div>
+      </div>
+      <div style="display:flex;align-items:center;color:var(--accent);font-size:22px">→</div>
+      <div style="flex:1;min-width:240px;background:rgba(0,229,160,.05);border:1px solid rgba(0,229,160,.25);border-radius:10px;padding:18px">
+        <div style="font-family:'Rajdhani',sans-serif;font-size:12px;color:var(--green);font-weight:700;margin-bottom:10px;text-transform:uppercase;letter-spacing:.08em">③ Action Summary</div>
+        <div class="code"><span class="cc">--- ACTION DISTRIBUTION ---</span><br/>
+ALLOW: <span class="num" data-b="view.actions.ALLOW" data-f="n"></span><br/>
+ALERT: <span class="num" data-b="view.actions.ALERT" data-f="n"></span><br/>
+BLOCK: <span class="num" data-b="view.actions.BLOCK" data-f="n"></span><br/><br/>
+<span class="cc">--- RISK RATES ---</span><br/>
+ALLOW Miss Rate: <span class="num" data-b="view.risk.ALLOW.risk_pct" data-f="p"></span><br/>
+ALERT Attack Rate: <span class="num" data-b="view.risk.ALERT.risk_pct" data-f="p"></span><br/>
+Incorrect Block Rate: <span class="num" data-b="view.risk.BLOCK.risk_pct" data-f="p"></span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Action cards -->
+  <div class="sh"><div class="stag"></div><div class="stitle">Pipeline Action Distribution — Current Run</div></div>
+  <div class="g3 mb">
+    <div class="card" style="text-align:center">
+      <div style="font-size:26px;margin-bottom:8px">✅</div>
+      <div style="font-family:'Rajdhani',sans-serif;font-size:40px;font-weight:700;color:var(--green)" data-b="view.actions.ALLOW" data-f="n">—</div>
+      <div style="font-family:'Rajdhani',sans-serif;font-size:17px;color:var(--green);margin-bottom:10px">ALLOW</div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:4px">Missed Attack Rate</div>
+      <div style="font-family:'Rajdhani',sans-serif;font-size:22px;font-weight:700;color:var(--orange)" data-b="view.risk.ALLOW.risk_pct" data-f="p">—</div>
+    </div>
+    <div class="card" style="text-align:center">
+      <div style="font-size:26px;margin-bottom:8px">⚠️</div>
+      <div style="font-family:'Rajdhani',sans-serif;font-size:40px;font-weight:700;color:var(--yellow)" data-b="view.actions.ALERT" data-f="n">—</div>
+      <div style="font-family:'Rajdhani',sans-serif;font-size:17px;color:var(--yellow);margin-bottom:10px">ALERT</div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:4px">Were Actual Attacks</div>
+      <div style="font-family:'Rajdhani',sans-serif;font-size:22px;font-weight:700;color:var(--orange)" data-b="view.risk.ALERT.risk_pct" data-f="p">—</div>
+    </div>
+    <div class="card" style="text-align:center">
+      <div style="font-size:26px;margin-bottom:8px">🚫</div>
+      <div style="font-family:'Rajdhani',sans-serif;font-size:40px;font-weight:700;color:var(--red)" data-b="view.actions.BLOCK" data-f="n">—</div>
+      <div style="font-family:'Rajdhani',sans-serif;font-size:17px;color:var(--red);margin-bottom:10px">BLOCK</div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:4px">Correct Block Rate</div>
+      <div style="font-family:'Rajdhani',sans-serif;font-size:22px;font-weight:700;color:var(--green)" id="correctBlockRate">—</div>
+    </div>
+  </div>
+
+  <!-- Pipeline log -->
+  <div class="sh"><div class="stag"></div><div class="stitle">Pipeline Execution Log — Current Run</div><div class="ssub">every 300th flow · security_events.csv</div></div>
+  <div class="card">
+    <table class="dt">
+      <thead><tr><th>Step</th><th>ML Prediction</th><th>Confidence</th><th>RL Action</th><th>Reward</th></tr></thead>
+      <tbody id="pipeLogRows"></tbody>
+    </table>
+  </div>
+
+  <!-- THREAT SEVERITY DISTRIBUTION -->
+  <div class="sh"><div class="stag"></div><div class="stitle">Threat Severity Distribution — Current Run</div><div class="ssub">pipeline.py · <span data-b="summary.total_samples" data-f="n"></span> Samples</div></div>
+  <div class="g4 mb">
+    <div class="card" style="text-align:center">
+      <div style="font-size:22px;margin-bottom:6px">🟢</div>
+      <div style="font-family:'Rajdhani',sans-serif;font-size:36px;font-weight:700;color:var(--green)" data-b="view.severity.LOW" data-f="n">—</div>
+      <div style="font-family:'Rajdhani',sans-serif;font-size:14px;color:var(--green);margin-bottom:6px">LOW</div>
+      <div style="font-family:'Rajdhani',sans-serif;font-size:22px;font-weight:700;color:var(--text2)" data-b="view.severity_pct.LOW" data-f="p">—</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:4px">Threat Score: 0–24/100</div>
+    </div>
+    <div class="card" style="text-align:center">
+      <div style="font-size:22px;margin-bottom:6px">🟡</div>
+      <div style="font-family:'Rajdhani',sans-serif;font-size:36px;font-weight:700;color:var(--yellow)" data-b="view.severity.MEDIUM" data-f="n">—</div>
+      <div style="font-family:'Rajdhani',sans-serif;font-size:14px;color:var(--yellow);margin-bottom:6px">MEDIUM</div>
+      <div style="font-family:'Rajdhani',sans-serif;font-size:22px;font-weight:700;color:var(--text2)" data-b="view.severity_pct.MEDIUM" data-f="p">—</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:4px">Threat Score: 25–49/100</div>
+    </div>
+    <div class="card" style="text-align:center">
+      <div style="font-size:22px;margin-bottom:6px">🟠</div>
+      <div style="font-family:'Rajdhani',sans-serif;font-size:36px;font-weight:700;color:var(--orange)" data-b="view.severity.HIGH" data-f="n">—</div>
+      <div style="font-family:'Rajdhani',sans-serif;font-size:14px;color:var(--orange);margin-bottom:6px">HIGH</div>
+      <div style="font-family:'Rajdhani',sans-serif;font-size:22px;font-weight:700;color:var(--text2)" data-b="view.severity_pct.HIGH" data-f="p">—</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:4px">Threat Score: 50–74/100</div>
+    </div>
+    <div class="card" style="text-align:center">
+      <div style="font-size:22px;margin-bottom:6px">🔴</div>
+      <div style="font-family:'Rajdhani',sans-serif;font-size:36px;font-weight:700;color:var(--red)" data-b="view.severity.CRITICAL" data-f="n">—</div>
+      <div style="font-family:'Rajdhani',sans-serif;font-size:14px;color:var(--red);margin-bottom:6px">CRITICAL</div>
+      <div style="font-family:'Rajdhani',sans-serif;font-size:22px;font-weight:700;color:var(--text2)" data-b="view.severity_pct.CRITICAL" data-f="p">—</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:4px">Threat Score: 75–100/100</div>
+    </div>
+  </div>
+
+  <!-- RL RESULTS + Q-TABLE -->
+  <div class="sh"><div class="stag"></div><div class="stitle">RL Policy Results — Current Run</div><div class="ssub">Frozen Q-table · <span data-b="summary.total_samples" data-f="n"></span> Steps</div></div>
+  <div class="g2 mb">
+    <div class="card">
+      <div class="ct">📊 RL Evaluation Summary</div>
+      <div class="mr"><span class="mk">Total Reward</span><span class="mval g" data-b="summary.total_reward" data-f="n"></span></div>
+      <div class="mr"><span class="mk">States Visited</span><span class="mval ac"><span data-b="view.unique_states" data-f="n"></span> unique states</span></div>
+      <div class="mr"><span class="mk">Actions Evaluated</span><span class="mval" data-b="summary.total_samples" data-f="n"></span></div>
+      <div class="mr"><span class="mk">Q-table Size</span><span class="mval"><span data-b="summary.q_table_states" data-f="n"></span> states</span></div>
+      <div class="mr"><span class="mk">Unseen States (ALERT fallback)</span><span class="mval" data-b="summary.unseen_rl_states" data-f="n"></span></div>
+      <div class="mr"><span class="mk">Q-table File</span><span class="mval g">q_table.pkl ✓ (frozen)</span></div>
+      <div style="margin-top:14px;padding:12px;background:rgba(0,229,160,.06);border:1px solid rgba(0,229,160,.2);border-radius:8px">
+        <div style="font-family:'Rajdhani',sans-serif;font-size:11px;color:var(--green);font-weight:700;margin-bottom:6px;text-transform:uppercase;letter-spacing:.08em">Key Insight (from the loaded Q-table)</div>
+        <div style="font-size:11px;color:var(--text3);line-height:1.7" id="policyInsight"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ct">🧠 Learned RL Policy — Q-table (loaded for this run)</div>
+      <table class="dt" style="font-size:11px">
+        <thead><tr><th>State (pred, conf_bucket)</th><th>Best Action</th><th>Q-values [ALLOW, ALERT, BLOCK]</th></tr></thead>
+        <tbody id="qRows"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- DETAILED STEPS -->
+  <div class="sh"><div class="stag"></div><div class="stitle">Detailed Pipeline Steps — Threat Assessment &amp; Response Engine</div><div class="ssub">Current Run · Logged Steps</div></div>
+  <div class="card mb">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px" id="stepCards"></div>
+  </div>
+
+  <!-- RUN CHARTS -->
+  <div class="sh"><div class="stag"></div><div class="stitle">Charts Generated by This Run</div><div class="ssub">runs/&lt;RUN_ID&gt;/*.png</div></div>
+  <div class="card mb"><div class="gallery" id="runGallery"></div></div>
+
+</div><!-- /pipeline -->
+
+
+
+<!-- ═══ PAGE: SELF-HEALING ═══ -->
+<div id="pg-selfhealing" class="pg">
+  <div class="sh"><div class="stag"></div><div class="stitle">Closed-Loop Self-Healing Operations</div><div class="ssub">Phase 4 · Current Run</div></div>
+
+  <div class="phase-banner">
+    <div><div class="pb-title">SELF-HEALING ENGINE · OPERATIONAL ADAPTATION</div>
+    <div class="pb-note">Detect → assess → recognize → decide → respond → verify → recover → remember. The RF and frozen Q-table are not silently retrained during inference.</div></div>
+    <div class="sim-badge"><span class="dot dg" style="animation:none;opacity:1"></span>CLOSED LOOP READY</div>
+  </div>
+
+  <div class="loop-grid mb">
+    <div class="loop-node"><div class="li">🧠</div><div class="ln">DETECT</div><div class="ld">Random Forest<br/>57 CIC flow features</div></div>
+    <div class="loop-node"><div class="li">🎯</div><div class="ln">ASSESS</div><div class="ld">Threat score<br/>LOW → CRITICAL</div></div>
+    <div class="loop-node"><div class="li">🧬</div><div class="ln">RECOGNIZE</div><div class="ld">Behavior signature<br/>NEW / KNOWN / REPEATED</div></div>
+    <div class="loop-node"><div class="li">🤖</div><div class="ln">DECIDE</div><div class="ld">Frozen Q-policy<br/>ALLOW / ALERT / BLOCK</div></div>
+    <div class="loop-node"><div class="li">🛡️</div><div class="ln">RESPOND</div><div class="ld">Response Engine<br/>controlled action</div></div>
+    <div class="loop-node"><div class="li">✓</div><div class="ln">VERIFY</div><div class="ld">Outcome check<br/>success / failure / pending</div></div>
+    <div class="loop-node heal"><div class="li">♻️</div><div class="ln">HEAL</div><div class="ld">Escalate / reuse<br/>restore endpoint</div></div>
+  </div>
+
+  <div class="kpi-strip">
+    <div class="kpi-x"><div class="kv" data-b="summary.initial_containment_rate_percent" data-f="p">—</div><div class="kl">Initial Containment</div><div class="ks"><span data-b="summary.initial_simulated_containments" data-f="n"></span> / <span data-b="summary.actual_attacks" data-f="n"></span> attacks</div></div>
+    <div class="kpi-x"><div class="kv" data-b="summary.recovery_recommended" data-f="n">—</div><div class="kl">Recovery Required</div><div class="ks"><span data-b="summary.initial_missed_attacks" data-f="n"></span> missed + <span data-b="summary.initial_alert_only_attacks" data-f="n"></span> alert-only</div></div>
+    <div class="kpi-x"><div class="kv"><span data-b="summary.successful_simulated_recoveries" data-f="n"></span>/<span data-b="summary.recovery_actions_executed" data-f="n"></span></div><div class="kl">Simulated Recoveries</div><div class="ks">Offline oracle-assisted</div></div>
+    <div class="kpi-x"><div class="kv" data-b="summary.post_recovery_containment_rate_percent" data-f="p">—</div><div class="kl">Post-Recovery</div><div class="ks">This run only</div></div>
+    <div class="kpi-x"><div class="kv" data-b="summary.reused_defense_decisions" data-f="n">—</div><div class="kl">Defense Reuse</div><div class="ks">Repeated pattern · prior success</div></div>
+    <div class="kpi-x"><div class="kv" data-b="summary.initial_false_blocks" data-f="n">—</div><div class="kl">False Blocks</div><div class="ks"><span data-b="summary.unseen_rl_states" data-f="n"></span> unseen RL states</div></div>
+  </div>
+
+  <div class="g2 mb">
+    <div class="card">
+      <div class="ct">♻ Recovery Path — Current Run</div>
+      <div class="recovery-flow">
+        <div class="rfbox"><div class="rfnum" style="color:var(--orange)" data-b="summary.recovery_recommended" data-f="n">—</div><div class="rflab">Not Initially Contained</div></div>
+        <div class="rfarr">→</div>
+        <div class="rfbox"><div class="rfnum" style="color:var(--purple)" data-b="summary.recovery_actions_executed" data-f="n">—</div><div class="rflab">Recovery Actions</div></div>
+        <div class="rfarr">→</div>
+        <div class="rfbox"><div class="rfnum" style="color:var(--green)" data-b="summary.successful_simulated_recoveries" data-f="n">—</div><div class="rflab">Verified Simulated Recovery</div></div>
+      </div>
+      <div class="disclaimer-x" style="margin-top:14px"><strong>Evidence boundary:</strong> ground-truth labels are consulted only after the initial response as an offline verification oracle. This proves the recovery logic under controlled evaluation; it does not prove 100% autonomous live-network containment.</div>
+    </div>
+    <div class="card">
+      <div class="ct">🧠 What the System Learns From Experience</div>
+      <div class="arch-mini">
+        <div class="arch-col"><h4>Threat Memory</h4><p>Stores malicious event context, pattern identity, prior action, response and verification outcome so later decisions can use security history.</p></div>
+        <div class="arch-col"><h4>Pattern Intelligence</h4><p>Deterministic behavioral signatures identify NEW, KNOWN and REPEATED malicious behavior without claiming ML clustering.</p></div>
+        <div class="arch-col"><h4>Defense Reuse</h4><p>Repeated threats with a previously successful containment can trigger REUSE_DEFENSE / REINFORCE_EXISTING_RESPONSE.</p></div>
+        <div class="arch-col"><h4>Controlled Learning</h4><p>Operational policy adapts through memory and recovery. RF retraining and Q-table updates remain controlled, not automatic during inference.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sh"><div class="stag"></div><div class="stitle">Recovery Case Explorer</div><div class="ssub">Click a row to inspect the full decision lifecycle</div></div>
+  <div class="card">
+    <div class="soc-controls">
+      <input id="healSearch" type="text" placeholder="Search event ID, action, pattern…"/>
+      <select id="healFilter"><option value="RECOVERY">Recovery cases</option><option value="ALL">All events</option><option value="ATTACK">Ground-truth attacks</option><option value="FALSE_BLOCK">False blocks</option></select>
+      <select id="healAction"><option value="ALL">All initial actions</option><option>ALLOW</option><option>ALERT</option><option>BLOCK</option></select>
+    </div>
+    <div class="event-wrap">
+      <table class="dt"><thead><tr><th>Step</th><th>Truth</th><th>RF</th><th>Score</th><th>Initial</th><th>Verify</th><th>Healing</th><th>Recovery</th><th>Pattern</th></tr></thead><tbody id="healRows"></tbody></table>
+    </div>
+    <div id="eventDetail" class="event-detail"></div>
+  </div>
+
+  <div class="sh"><div class="stag"></div><div class="stitle">Recovery Audit Trail</div><div class="ssub">SQLite · recovery_audit · threat_memory_run.db</div></div>
+  <div class="card">
+    <table class="dt"><thead><tr><th>Event</th><th>Step</th><th>RF</th><th>Initial</th><th>Initial Verify</th><th>Healing</th><th>Recovery Action</th><th>Status</th><th>Verified</th></tr></thead><tbody id="auditRows"></tbody></table>
+  </div>
+</div>
+
+
+<!-- ═══ PAGE: ENDPOINT HEALING ═══ -->
+<div id="pg-endpoint" class="pg">
+  <div class="sh"><div class="stag"></div><div class="stitle">Controlled Endpoint Healing Simulation</div><div class="ssub">endpoint_healing.py · SHA-256 verified · isolated sandbox</div></div>
+
+  <div class="phase-banner">
+    <div>
+      <div class="pb-title">TARGET DEVICE RECOVERY · BASELINE → COMPROMISE → QUARANTINE → RESTORE → VERIFY</div>
+      <div class="pb-note">Each simulated host is a project-owned folder (<span class="mono">runs/<span data-b="run_id"></span>/endpoint_sim/</span>) with inert dummy files, a JSON configuration and a JSON list imitating startup persistence. Healing performs real file moves and restores, then re-hashes every file. Success is decided only by SHA-256 evidence.</div>
+    </div>
+    <div class="sim-badge"><span class="dot dy" style="animation:none;opacity:1"></span>CONTROLLED SIMULATION · NOT LIVE REMEDIATION</div>
+  </div>
+
+  <div class="loop-grid mb">
+    <div class="loop-node"><div class="li">📸</div><div class="ln">BASELINE</div><div class="ld">Known-good copy<br/>SHA-256 manifest</div></div>
+    <div class="loop-node"><div class="li">☣️</div><div class="ln">COMPROMISE</div><div class="ld">Drop · tamper<br/>encrypt · delete</div></div>
+    <div class="loop-node"><div class="li">🔎</div><div class="ln">DETECT</div><div class="ld">Diff vs trusted<br/>manifest</div></div>
+    <div class="loop-node"><div class="li">🗄️</div><div class="ln">QUARANTINE</div><div class="ld">Move artefacts<br/>hash recorded</div></div>
+    <div class="loop-node"><div class="li">🧹</div><div class="ln">PERSISTENCE</div><div class="ld">Remove rogue<br/>startup entries</div></div>
+    <div class="loop-node"><div class="li">♻️</div><div class="ln">RESTORE</div><div class="ld">Trusted baseline<br/>copies only</div></div>
+    <div class="loop-node heal"><div class="li">✓</div><div class="ln">VERIFY</div><div class="ld">Re-hash all files<br/>verdict + audit</div></div>
+  </div>
+
+  <div class="kpi-strip">
+    <div class="kpi-x"><div class="kv" data-b="ep.healedText">—</div><div class="kl">Hosts Healed &amp; Verified</div><div class="ks">HEALED_VERIFIED</div></div>
+    <div class="kpi-x"><div class="kv" data-b="ep.filesText">—</div><div class="kl">SHA-256 Checks Passed</div><div class="ks">All simulated hosts</div></div>
+    <div class="kpi-x"><div class="kv" data-b="ep.quarantined" data-f="n">—</div><div class="kl">Artefacts Quarantined</div><div class="ks">Moved, never deleted</div></div>
+    <div class="kpi-x"><div class="kv" data-b="ep.restored" data-f="n">—</div><div class="kl">Files Restored</div><div class="ks">From trusted baseline</div></div>
+    <div class="kpi-x"><div class="kv" data-b="ep.persistence" data-f="n">—</div><div class="kl">Persistence Removed</div><div class="ks">Simulated startup entries</div></div>
+    <div class="kpi-x"><div class="kv" data-b="ep.escalated" data-f="n">—</div><div class="kl">Escalated to SOC</div><div class="ks">Healing incomplete</div></div>
+  </div>
+
+  <div class="g2 mb">
+    <div class="card"><div class="ct">🔐 SHA-256 Integrity Verification per Host</div><div class="cw" style="height:240px"><canvas id="epIntegrityChart"></canvas></div></div>
+    <div class="card"><div class="ct">🧭 Healing Actions per Host</div><div class="cw" style="height:240px"><canvas id="epActionsChart"></canvas></div></div>
+  </div>
+
+  <div id="epHosts"></div>
+
+  <div class="sh"><div class="stag"></div><div class="stitle">Multi-Stage APT Campaign — Controlled Simulation</div><div class="ssub">apt_simulation.py · 2 simulated hosts · MITRE ATT&amp;CK tactic labels</div></div>
+  <div id="aptSection"></div>
+
+  <div class="sh"><div class="stag"></div><div class="stitle">Endpoint Healing Audit Evidence</div><div class="ssub">SQLite · endpoint_healing_audit · threat_memory_run.db</div></div>
+  <div class="card mb">
+    <table class="dt" style="font-size:11px"><thead><tr><th>Incident</th><th>Host</th><th>Scenario</th><th>Trigger Event</th><th>Status</th><th>Verified</th><th>Files OK</th><th>Quarantined</th><th>Restored</th><th>Persistence</th><th>Decision</th></tr></thead><tbody id="epAuditRows"></tbody></table>
+  </div>
+
+  <div class="disclaimer-x"><strong>Scope:</strong> this is a controlled endpoint healing simulation. It does not modify the Windows registry, real startup entries, firewall rules or system files, and it is not remediation of a real compromised machine. The triggering incident comes from this pipeline run and is mapped onto a simulated host because the CIC dataset flows do not identify a real endpoint. Live firewall enforcement, live isolation and live telemetry remain future work.</div>
+</div>
+
+
+<!-- ═══ PAGE: THREAT INTELLIGENCE ═══ -->
+<div id="pg-threatintel" class="pg">
+  <div class="sh"><div class="stag"></div><div class="stitle">Threat Intelligence & Persistent Memory</div><div class="ssub">Pattern Engine V2 · SQLite Threat Memory</div></div>
+
+  <div class="kpi-strip">
+    <div class="kpi-x"><div class="kv" data-b="summary.stored_threat_events" data-f="n">—</div><div class="kl">Stored Predicted Threats</div><div class="ks"><span data-b="view.rf.tp" data-f="n"></span> TP + <span data-b="view.rf.fp" data-f="n"></span> FP</div></div>
+    <div class="kpi-x"><div class="kv" data-b="summary.unique_threat_patterns" data-f="n">—</div><div class="kl">Unique Patterns</div><div class="ks">Per-run memory</div></div>
+    <div class="kpi-x"><div class="kv" data-b="summary.recurring_threat_patterns" data-f="n">—</div><div class="kl">Repeated Patterns</div><div class="ks">Occurrence &gt; 1</div></div>
+    <div class="kpi-x"><div class="kv" data-b="summary.recovery_audit_events" data-f="n">—</div><div class="kl">Recovery Audits</div><div class="ks">Separate audit trail</div></div>
+    <div class="kpi-x"><div class="kv" data-b="view.actions.BLOCK" data-f="n">—</div><div class="kl">RL Blocks</div><div class="ks">Initial policy</div></div>
+    <div class="kpi-x"><div class="kv" data-b="view.actions.ALERT" data-f="n">—</div><div class="kl">RL Alerts</div><div class="ks">Includes unseen-state fallback</div></div>
+  </div>
+
+  <div class="g2 mb">
+    <div class="card"><div class="ct">🧬 Pattern Status — RF-Predicted Threats (current run)</div><div class="cw" style="height:240px"><canvas id="patternChart"></canvas></div></div>
+    <div class="card"><div class="ct">🗃 Top Recurring Patterns — SQLite threat_patterns</div>
+      <table class="dt" style="font-size:11px"><thead><tr><th>Pattern</th><th>Occurrences</th><th>Severity</th><th>Last Action</th><th>Contained ✓/✗</th></tr></thead><tbody id="topPatternRows"></tbody></table>
+    </div>
+  </div>
+
+  <div class="g2 mb">
+    <div class="card">
+      <div class="ct">🧬 Behavioral Fingerprint</div>
+      <div class="code"><span class="cc"># Pattern identity uses categorical behavior</span><br/>
+prediction + severity<br/>
+Flow Duration<br/>
+Flow Packets/s<br/>
+Flow Bytes/s<br/>
+Fwd Packet Length Mean<br/>
+Bwd Packet Length Mean<br/><br/>
+<span class="cc"># Deterministic identity</span><br/>
+fingerprint = SHA256(signature)<br/>
+pattern_id = <span class="str">"PAT-"</span> + fingerprint[:<span class="num">12</span>]</div>
+      <div class="disclaimer-x" style="margin-top:12px">The hash does not detect attacks. Random Forest performs detection; the Pattern Engine asks whether the malicious behavior signature has been observed before.</div>
+    </div>
+    <div class="card">
+      <div class="ct">🗃 Persistent Security Memory</div>
+      <div class="timeline-x">
+        <div class="tlx"><div class="tn">First Observation</div><div class="tv">NEW</div></div>
+        <div class="tlx"><div class="tn">Stored</div><div class="tv">PAT-…</div></div>
+        <div class="tlx"><div class="tn">Seen Again</div><div class="tv">KNOWN</div></div>
+        <div class="tlx"><div class="tn">Repeated</div><div class="tv">REPEATED</div></div>
+        <div class="tlx"><div class="tn">Prior Success</div><div class="tv">REUSE DEFENSE</div></div>
+      </div>
+      <div class="arch-mini" style="margin-top:12px">
+        <div class="arch-col"><h4>threat_events</h4><p>Event-level prediction, confidence, severity, action, response and containment verification.</p></div>
+        <div class="arch-col"><h4>threat_patterns</h4><p>Behavioral fingerprint, occurrence history and prior successful defensive context.</p></div>
+        <div class="arch-col"><h4>recovery_audit</h4><p>Initial failure, healing action, recovery action, recovery status and verification evidence.</p></div>
+        <div class="arch-col"><h4>endpoint_healing_audit</h4><p>Simulated host, scenario, SHA-256 checks, quarantine / restore counts and final healing decision.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sh"><div class="stag"></div><div class="stitle">Threat Event Explorer</div><div class="ssub">Current-run security decisions · read-only evidence view</div></div>
+  <div class="card">
+    <div class="soc-controls">
+      <input id="intelSearch" type="text" placeholder="Search event ID or pattern ID…"/>
+      <select id="intelSeverity"><option value="ALL">All severities</option><option>LOW</option><option>MEDIUM</option><option>HIGH</option><option>CRITICAL</option></select>
+      <select id="intelPattern"><option value="ALL">All pattern states</option><option>NEW</option><option>KNOWN</option><option>REPEATED</option></select>
+      <select id="intelDecision"><option value="ALL">All actions</option><option>ALLOW</option><option>ALERT</option><option>BLOCK</option></select>
+    </div>
+    <div class="event-wrap">
+      <table class="dt"><thead><tr><th>Step</th><th>Event</th><th>Severity</th><th>Confidence</th><th>Pattern</th><th>Pattern ID</th><th>RL Action</th><th>Verification</th></tr></thead><tbody id="intelRows"></tbody></table>
+    </div>
+    <div class="disclaimer-x" style="margin-top:12px">Rows shown here come from the current run (<span class="mono" data-b="run_id"></span>). Empty pattern fields on benign or RF-missed events are expected because persistent production memory is threat-focused.</div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-in">
+    <div class="footer-left">
+      <strong>Self-Healing Network Security System for APT Detection</strong><br/>
+      Department of Information Technology · K. J. Somaiya School of Engineering · Somaiya Vidyavihar University · Mumbai<br/>
+      Academic Year 2026–27 · Academic guidance: Prof. Deepti Patole
+    </div>
+    <div class="footer-right">
+      Developed by Nikunj Mody<br/>
+      Run <span class="mono" data-b="run_id"></span> · Initial Containment: <span data-b="summary.initial_containment_rate_percent" data-f="p"></span> · Recovery: <span data-b="summary.successful_simulated_recoveries" data-f="n"></span>/<span data-b="summary.recovery_actions_executed" data-f="n"></span> simulated · Endpoints: <span data-b="ep.healedText"></span><br/>
+      <span style="color:var(--yellow)">⚠ Phase 4 — Offline Oracle-Assisted Evaluation · Controlled Endpoint Healing Simulation</span>
+    </div>
+  </div>
+</footer>
+
+
+<script>
+/* ═══ RUN DATA BINDING — every run-dependent value comes from dashboard_data.js ═══ */
+(function(){
+  var D=window.RUN_DATA;
+  var strip=document.getElementById('runStrip');
+  if(!D){
+    if(strip){strip.className='run-missing';strip.innerHTML='⚠ dashboard_data.js not found. Open the dashboard.html generated inside a runs/&lt;RUN_ID&gt;/ folder. Run-dependent values are shown as "n/a".';}
+    document.querySelectorAll('[data-b]').forEach(function(el){el.textContent='n/a';});
+    return;
+  }
+  var S=D.summary||{},V=D.view||{},EP=D.endpoint_healing||[],DB=D.database||{};
+  var esc=function(v){return String(v==null?'':v).replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m];});};
+  var nf=function(v){return (v==null||v==='')?'n/a':Number(v).toLocaleString('en-US');};
+  var pf=function(v){return (v==null||v==='')?'n/a':Number(v).toFixed(2)+'%';};
+  var lab=function(v){return Number(v)===1?'ATTACK':'BENIGN';};
+  var actCls=function(a){return a==='BLOCK'?'tblk':(a==='ALERT'?'talt':'tal');};
+  var sign=function(r){return (r>0?'+':'')+r;};
+  var short=function(h){return h?esc(h.slice(0,12))+'…':'—';};
+  var sum=function(a,f){return a.reduce(function(t,x){return t+f(x);},0);};
+
+  /* endpoint aggregates */
+  var filesOk=sum(EP,function(r){return (r.integrity_summary||{}).files_passed||0;});
+  var filesAll=sum(EP,function(r){return (r.integrity_summary||{}).files_checked||0;});
+  var ep={
+    healed:EP.filter(function(r){return r.verified;}).length,total:EP.length,
+    quarantined:sum(EP,function(r){return (r.quarantine_actions||[]).length;}),
+    restored:sum(EP,function(r){return (r.restoration_actions||[]).filter(function(a){return a.restored;}).length;}),
+    persistence:sum(EP,function(r){return (r.persistence_removed||[]).length;}),
+    escalated:EP.filter(function(r){return (r.final_healing_decision||{}).escalation_required;}).length
+  };
+  ep.healedText=EP.length?(ep.healed+' / '+ep.total):'not run';
+  ep.filesText=EP.length?(filesOk+' / '+filesAll):'n/a';
+
+  var ctx={run_id:D.run_id,generated_at:D.generated_at,summary:S,view:V,ep:ep};
+  function get(path){return path.split('.').reduce(function(o,k){return o==null?undefined:o[k];},ctx);}
+  document.querySelectorAll('[data-b]').forEach(function(el){
+    var v=get(el.getAttribute('data-b')),f=el.getAttribute('data-f');
+    if(v==null||v===''){el.textContent='n/a';el.title='Not produced by this run';return;}
+    el.textContent=f==='n'?nf(v):(f==='p'?pf(v):String(v));
+  });
+  var folder=document.getElementById('rsFolder');
+  if(folder)folder.textContent='runs/'+D.run_id+'/';
+  document.title='SOC Dashboard · '+D.run_id;
+
+  /* ML MODEL — current-run RF bars */
+  var rf=V.rf||{},bars=document.getElementById('runRfBars');
+  if(bars){
+    bars.innerHTML=[['Benign Precision',rf.benign_precision,'var(--green)'],['Benign Recall',rf.benign_recall,'var(--green)'],
+      ['Attack Precision',rf.precision,'var(--accent)'],['Attack Recall',rf.recall,'var(--accent)'],['Attack F1',rf.f1,'var(--purple)']]
+      .map(function(b){return '<div class="pb-w"><div class="pb-r"><span>'+b[0]+'</span><span style="color:'+b[2]+'">'+pf(b[1])+'</span></div><div class="pb-b"><div class="pb-f" style="width:'+(b[1]||0)+'%;background:'+b[2]+'"></div></div></div>';}).join('')+
+      '<div style="margin-top:10px;padding:10px;background:rgba(0,229,160,.06);border:1px solid rgba(0,229,160,.2);border-radius:6px;text-align:center"><div style="font-family:Rajdhani,sans-serif;font-size:26px;font-weight:700;color:var(--green)">'+pf(rf.accuracy)+'</div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em">Run Accuracy (in-sample)</div></div>';
+  }
+
+  /* LOG TABLES (RL tab + Pipeline tab) */
+  var log=V.step_log||[];
+  var rlRows=document.getElementById('rlLogRows');
+  if(rlRows)rlRows.innerHTML=log.map(function(e){return '<tr><td class="mono">'+e.step+'</td><td class="'+(e.prediction==1?'atk':'ben')+'">'+lab(e.prediction)+'</td><td class="mono">'+Number(e.confidence).toFixed(2)+'</td><td class="mono">'+esc(e.rl_state)+'</td><td class="'+actCls(e.initial_action)+'">'+esc(e.initial_action)+'</td><td class="'+(e.true_label==1?'atk':'ben')+'">'+lab(e.true_label)+'</td><td class="'+(e.reward>0?'tal':'tblk')+'">'+sign(e.reward)+'</td></tr>';}).join('')+
+    '<tr style="background:rgba(0,229,160,.05)"><td class="mono" colspan="6" style="color:var(--accent);font-family:Rajdhani,sans-serif;font-weight:700">RUN COMPLETE — '+nf(S.total_samples)+' Steps</td><td class="mono" style="color:var(--green);font-size:17px;font-weight:700;font-family:Rajdhani,sans-serif">'+nf(S.total_reward)+'</td></tr>';
+  var pRows=document.getElementById('pipeLogRows');
+  if(pRows)pRows.innerHTML=log.map(function(e){return '<tr><td class="mono">'+e.step+'</td><td class="'+(e.prediction==1?'atk':'ben')+'">'+lab(e.prediction)+'</td><td class="mono">'+Number(e.confidence).toFixed(2)+'</td><td class="'+actCls(e.initial_action)+'">'+esc(e.initial_action)+'</td><td class="'+(e.reward>0?'tal':'tblk')+'">'+sign(e.reward)+'</td></tr>';}).join('')+
+    '<tr style="background:rgba(0,229,160,.05)"><td colspan="3" style="color:var(--accent);font-family:Rajdhani,sans-serif;font-weight:700;font-size:13px">PIPELINE COMPLETE · ALLOW:'+nf(V.actions.ALLOW)+' · ALERT:'+nf(V.actions.ALERT)+' · BLOCK:'+nf(V.actions.BLOCK)+'</td><td colspan="2" style="color:var(--green);font-family:Rajdhani,sans-serif;font-weight:700;font-size:17px">Total: '+nf(S.total_reward)+'</td></tr>';
+  var dl=document.getElementById('pipeDetectLog'),dd=document.getElementById('pipeDecideLog');
+  if(dl)dl.innerHTML=log.slice(0,3).map(function(e){return '<span class="cc"># STEP '+e.step+': '+lab(e.prediction)+', conf='+Number(e.confidence).toFixed(2)+'</span>';}).join('<br/>');
+  if(dd)dd.innerHTML=log.slice(0,3).map(function(e){return '<span class="cc"># STEP '+e.step+': '+esc(e.rl_state)+' → '+esc(e.initial_action)+'  '+sign(e.reward)+'</span>';}).join('<br/>');
+  var cbr=document.getElementById('correctBlockRate');
+  if(cbr&&V.risk)cbr.textContent=V.risk.BLOCK.total?pf(100-V.risk.BLOCK.risk_pct):'n/a';
+
+  /* RISK TABLE */
+  var rr=document.getElementById('riskRows');
+  if(rr&&V.risk)rr.innerHTML=[['ALLOW','var(--green)'],['ALERT','var(--yellow)'],['BLOCK','var(--red)']].map(function(a){var r=V.risk[a[0]];
+    return '<tr><td style="color:'+a[1]+'">'+a[0]+'</td><td>'+nf(r.total)+'</td><td style="color:var(--green)">'+nf(r.safe)+'</td><td style="color:var(--red)">'+nf(r.risk)+'</td><td style="color:var(--orange)">'+pf(r.risk_pct)+'</td></tr>';}).join('');
+
+  /* REPRESENTATIVE EVENTS */
+  var rp=document.getElementById('reprRows');
+  if(rp)rp.innerHTML=(V.representative||[]).map(function(c){var e=c.event;
+    if(!e)return '<tr><td>'+esc(c.case)+'</td><td colspan="7" style="color:var(--text3)">not observed in this run</td></tr>';
+    var heal=esc(e.healing_action)+(e.recovery_action?' → '+esc(e.recovery_action)+' ('+esc(e.recovery_status)+')':'');
+    return '<tr><td>'+esc(c.case)+'</td><td class="mono">'+esc(e.step)+'</td><td class="'+(e.prediction==1?'atk':'ben')+'">'+lab(e.prediction)+'</td><td class="mono">'+Number(e.confidence).toFixed(2)+'</td><td class="'+actCls(e.initial_action)+'">'+esc(e.initial_action)+'</td><td class="'+(e.true_label==1?'atk':'ben')+'">'+lab(e.true_label)+'</td><td>'+heal+'</td><td class="'+(e.reward>0?'tal':'tblk')+'">'+sign(e.reward)+'</td></tr>';}).join('');
+
+  /* Q-TABLE + INSIGHT */
+  var q=document.getElementById('qRows');
+  if(q)q.innerHTML=(D.policy||[]).map(function(p){var atk=p.state.indexOf('(1')===0;
+    return '<tr'+(atk?' style="background:rgba(255,68,102,.04)"':'')+'><td class="mono">'+esc(p.state)+'</td><td class="'+actCls(p.best_action)+'">'+esc(p.best_action)+'</td><td class="mono">['+p.q_values.join(', ')+']</td></tr>';}).join('');
+  var pi=document.getElementById('policyInsight');
+  if(pi){var by={};(D.policy||[]).forEach(function(p){(by[p.best_action]=by[p.best_action]||[]).push(p.state);});
+    pi.innerHTML=['BLOCK','ALERT','ALLOW'].filter(function(a){return by[a];}).map(function(a){return '<strong class="'+actCls(a)+'">'+a+'</strong> for '+by[a].map(esc).join(', ');}).join('<br/>')+
+    '<br/>States outside the table fall back to <strong class="talt">ALERT</strong> ('+nf(S.unseen_rl_states)+' in this run).';}
+
+  /* STEP CARDS */
+  var sc=document.getElementById('stepCards');
+  if(sc)sc.innerHTML=log.map(function(e){var crit=e.severity==='CRITICAL';var col=e.prediction==1?'var(--red)':'var(--green)';
+    return '<div style="background:'+(crit?'rgba(255,68,102,.05)':'var(--card2)')+';border:1px solid '+(crit?'rgba(255,68,102,.3)':'var(--border)')+';border-radius:10px;padding:16px">'+
+      '<div style="font-family:Rajdhani,sans-serif;font-size:13px;font-weight:700;color:'+(crit?'var(--red)':'var(--accent)')+';margin-bottom:10px;border-bottom:1px solid var(--border);padding-bottom:6px">STEP '+e.step+(crit?' ⚠ CRITICAL':'')+' · <span class="mono" style="font-size:10px;color:var(--text3)">'+esc(e.event_id)+'</span></div>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11px">'+
+      [['ML Detection','<span style="color:'+col+'">'+lab(e.prediction)+' · conf='+Number(e.confidence).toFixed(2)+'</span>'],
+       ['Threat Score','<span style="color:'+col+'">'+Number(e.threat_score).toFixed(1)+'/100 · '+esc(e.severity)+'</span>'],
+       ['RL Action','<span class="'+actCls(e.initial_action)+'">'+esc(e.initial_action)+'</span>'],
+       ['Response','<span class="'+actCls(e.initial_action)+'">'+esc(e.initial_response)+'</span>'],
+       ['Status','<span style="color:var(--text2)">'+esc(e.initial_status)+'</span>'],
+       ['Verification','<span style="color:var(--text2)">'+esc(e.initial_verification)+'</span>'],
+       ['Healing','<span style="color:var(--text2)">'+esc(e.healing_action)+'</span>'],
+       ['Reward','<span class="'+(e.reward>0?'tal':'tblk')+'">'+sign(e.reward)+'</span>']]
+      .map(function(c){return '<div><div style="color:var(--text3);margin-bottom:2px">'+c[0]+'</div><div>'+c[1]+'</div></div>';}).join('')+'</div></div>';}).join('')+
+    '<div style="background:rgba(0,229,160,.05);border:1px solid rgba(0,229,160,.3);border-radius:10px;padding:16px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px"><div style="font-size:28px">✅</div><div style="font-family:Rajdhani,sans-serif;font-size:18px;font-weight:700;color:var(--green)">PIPELINE COMPLETE</div><div style="font-size:12px;color:var(--text3);text-align:center">Total Reward: <strong style="color:var(--green)">'+nf(S.total_reward)+'</strong><br/>ALLOW: '+nf(V.actions.ALLOW)+' · ALERT: '+nf(V.actions.ALERT)+' · BLOCK: '+nf(V.actions.BLOCK)+'</div></div>';
+
+  /* RUN CHART GALLERY */
+  var g=document.getElementById('runGallery');
+  if(g)g.innerHTML=(D.charts||[]).length?D.charts.map(function(c){return '<div><img src="'+esc(c)+'" alt="'+esc(c)+'" onerror="this.parentNode.innerHTML=\'<div class=chart-off>'+esc(c)+' missing</div>\'"/><div style="font-size:10px;color:var(--text3);margin-top:4px" class="mono">'+esc(c)+'</div></div>';}).join(''):'<div class="chart-off">No charts were generated for this run.</div>';
+
+  /* RECOVERY AUDIT (SQLite) */
+  var ar=document.getElementById('auditRows');
+  if(ar)ar.innerHTML=(DB.recovery_audit||[]).length?DB.recovery_audit.map(function(a){var ok=Number(a.recovery_verified)===1;
+    return '<tr><td class="mono">'+esc(a.event_id)+'</td><td class="mono">'+esc(a.flow_step)+'</td><td>'+lab(a.original_prediction)+'</td><td class="'+actCls(a.initial_action)+'">'+esc(a.initial_action)+'</td><td>'+esc(a.initial_verification_status)+'</td><td>'+esc(a.healing_action)+'</td><td class="'+actCls(a.recovery_action)+'">'+esc(a.recovery_action||'—')+'</td><td>'+esc(a.recovery_status)+'</td><td><span class="st '+(ok?'st-ok':'st-bad')+'">'+(ok?'VERIFIED':'NO')+'</span></td></tr>';}).join('')
+    :'<tr><td colspan="9" style="color:var(--text3)">No recovery audit records in this run\'s database.</td></tr>';
+
+  /* TOP PATTERNS (SQLite) */
+  var tp=document.getElementById('topPatternRows');
+  if(tp)tp.innerHTML=(DB.top_patterns||[]).map(function(p){return '<tr><td class="mono">'+esc(p.pattern_id)+'</td><td>'+nf(p.occurrence_count)+'</td><td>'+esc(p.severity)+'</td><td class="'+actCls(p.last_action)+'">'+esc(p.last_action)+'</td><td><span style="color:var(--green)">'+nf(p.successful_containments)+'</span> / <span style="color:var(--red)">'+nf(p.failed_containments)+'</span></td></tr>';}).join('')||'<tr><td colspan="5" style="color:var(--text3)">No patterns stored.</td></tr>';
+
+  /* ENDPOINT HOSTS */
+  var stCls=function(s){return /VERIFIED|RESTORED|SUCCESS|QUARANTINED|CLEAN|UNCHANGED/.test(s)?'st-ok':(/FAILED|INCOMPLETE|STILL|SOC_REVIEW/.test(s)?'st-bad':(/INJECTED|MODIFIED|DELETED/.test(s)?'st-warn':'st-info'));};
+  var chip=function(s){return '<span class="st '+stCls(s)+'">'+esc(s)+'</span>';};
+  var hosts=document.getElementById('epHosts');
+  if(hosts)hosts.innerHTML=EP.length?EP.map(function(r){
+    var ok=r.verified,d=r.detected||{},fin=r.final_healing_decision||{},ver=r.endpoint_verification||{},t=r.trigger_incident||{},isum=r.integrity_summary||{};
+    var pass=isum.files_passed||0,all=isum.files_checked||0;
+    var timeline=[['Trigger Event',esc(t.event_id||'standalone')],['Initial RL Action',esc(t.initial_action||'—')],['Self-Healing',esc(t.healing_action||'—')],
+      ['Compromise',(r.simulated_attack||[]).length+' actions'],['Detected',((d.unauthorized_files||[]).length+(d.modified_files||[]).length+(d.missing_files||[]).length)+' files · '+(d.unauthorized_persistence||[]).length+' persistence'],
+      ['Verifier',esc(ver.verification_status)],['Decision',esc(fin.healing_action)]];
+    var matrix=(r.file_matrix||[]).map(function(f){return '<tr><td class="mono">'+esc(f.path)+'</td><td>'+(f.clean_sha256?chip('CLEAN'):'<span style="color:var(--text3)">absent</span>')+'</td><td>'+chip(f.compromised_state)+'</td><td>'+chip(f.healed_state)+'</td><td class="hash">'+short(f.clean_sha256)+'<br/>'+short(f.healed_sha256)+'</td></tr>';}).join('');
+    var pers=function(title,list,mark){return '<div class="pers-col"><div class="pk">'+title+'</div>'+(list||[]).map(function(n){var rogue=(r.persistence_clean||[]).indexOf(n)<0;return '<div class="pe" style="color:'+(rogue?'var(--red)':'var(--text2)')+'">'+(rogue?'☣ ':'• ')+esc(n)+'</div>';}).join('')+'</div>';};
+    var quarantine=(r.quarantine_actions||[]).map(function(q){return '<tr><td class="mono">'+esc(q.original_path)+'</td><td class="mono" style="font-size:10px">'+esc(q.quarantine_path)+'</td><td class="hash">'+short(q.sha256)+'</td><td>'+(q.moved?chip('MOVED'):chip('FAILED'))+'</td></tr>';}).join('')||'<tr><td colspan="4" style="color:var(--text3)">No unauthorized artefacts.</td></tr>';
+    var restore=(r.restoration_actions||[]).map(function(a){return '<tr><td class="mono">'+esc(a.path)+'</td><td>'+(a.restored?chip('RESTORED'):chip('REFUSED'))+'</td><td style="font-size:11px;color:var(--text3)">'+esc(a.restored?('was '+a.previous_state+' · from '+a.source):a.reason)+'</td></tr>';}).join('')||'<tr><td colspan="3" style="color:var(--text3)">Nothing to restore.</td></tr>';
+    var attack=(r.simulated_attack||[]).map(function(a){return '<div class="tlx"><div class="tn">'+esc(a.type.replace(/_/g,' '))+'</div><div class="tv" style="font-size:11px">'+esc(a.path||a.entry)+'</div></div>';}).join('');
+    return '<div class="ep-host '+(ok?'ok':'bad')+'">'+
+      '<div class="ep-head"><div><div class="ep-title">'+esc(r.host_id)+' · '+esc((r.scenario||'').replace(/_/g,' '))+'</div><div class="ep-sub">'+esc(r.scenario_description)+'</div>'+
+      '<div class="ep-sub mono" style="margin-top:4px">Incident '+esc(r.incident_id)+' · report endpoint_sim/'+esc(r.host_id)+'/'+esc(r.report_path)+'</div></div>'+
+      '<div class="ep-verdict"><div class="vv" style="color:'+(ok?'var(--green)':'var(--red)')+'">'+esc(r.recovery_status)+'</div>'+chip(fin.healing_action||'—')+' <span style="font-size:11px;color:var(--text3)">→ '+esc(fin.recommended_action)+'</span>'+
+      '<div class="ep-meter" title="'+pass+'/'+all+' files verified"><span style="width:'+(all?100*pass/all:0)+'%;background:var(--green)"></span><span style="width:'+(all?100*(all-pass)/all:0)+'%;background:var(--red)"></span></div><div style="font-size:10px;color:var(--text3);margin-top:3px">'+pass+' / '+all+' SHA-256 checks passed</div></div></div>'+
+      '<div class="timeline-x" style="margin-bottom:14px">'+timeline.map(function(s){return '<div class="tlx"><div class="tn">'+s[0]+'</div><div class="tv" style="font-size:12px">'+s[1]+'</div></div>';}).join('')+'</div>'+
+      '<div class="ep-grid"><div>'+
+        '<div class="ep-sec"><h5>① Simulated compromise (inert)</h5><div class="timeline-x" style="margin-top:0">'+attack+'</div></div>'+
+        '<div class="ep-sec"><h5>② File &amp; configuration state · clean → compromised → healed</h5><table class="dt" style="font-size:11px"><thead><tr><th>File</th><th>Baseline</th><th>After Attack</th><th>After Healing</th><th>SHA-256 expected / actual</th></tr></thead><tbody>'+matrix+'</tbody></table></div>'+
+        '<div class="ep-sec"><h5>③ Quarantine</h5><table class="dt" style="font-size:11px"><thead><tr><th>Artefact</th><th>Quarantine Path</th><th>SHA-256</th><th>Result</th></tr></thead><tbody>'+quarantine+'</tbody></table></div>'+
+      '</div><div>'+
+        '<div class="ep-sec"><h5>④ Simulated persistence entries</h5><div class="pers-grid">'+pers('Baseline',r.persistence_clean)+pers('After Attack',r.persistence_compromised)+pers('After Healing',r.persistence_healed)+'</div>'+
+          '<div style="font-size:11px;color:var(--text3);margin-top:8px">Removed: '+((r.persistence_removed||[]).length?(r.persistence_removed||[]).map(function(n){return '<span class="st st-ok">'+esc(n)+'</span>';}).join(' '):'none')+'</div></div>'+
+        '<div class="ep-sec"><h5>⑤ Restoration from trusted baseline</h5><table class="dt" style="font-size:11px"><tbody>'+restore+'</tbody></table>'+
+          ((r.baseline_trust_problems||[]).length?'<div style="font-size:11px;color:var(--orange);margin-top:6px">Baseline trust check: '+r.baseline_trust_problems.map(esc).join('; ')+'</div>':'<div style="font-size:11px;color:var(--green);margin-top:6px">Baseline manifest and all backup copies passed their SHA-256 trust check.</div>')+'</div>'+
+        '<div class="ep-sec"><h5>⑥ Verification &amp; final verdict</h5>'+
+          '<div class="mr"><span class="mk">Verifier mode</span><span class="mval">'+esc(ver.verification_mode)+'</span></div>'+
+          '<div class="mr"><span class="mk">Verification</span><span class="mval">'+chip(ver.verification_status||'—')+'</span></div>'+
+          '<div class="mr"><span class="mk">Self-healing decision</span><span class="mval">'+chip(fin.healing_action||'—')+'</span></div>'+
+          '<div class="mr"><span class="mk">Escalation</span><span class="mval">'+(fin.escalation_required?chip('SOC ESCALATION'):chip('NONE'))+'</span></div>'+
+          '<div style="font-size:11px;color:var(--text3);margin-top:8px">'+esc(ver.reason)+'</div>'+
+          ((r.failure_reasons||[]).length?'<div class="fail-box"><strong>Failure reasons</strong><ul>'+r.failure_reasons.map(function(x){return '<li>'+esc(x)+'</li>';}).join('')+'</ul></div>':'')+
+        '</div>'+
+      '</div></div></div>';
+  }).join(''):'<div class="card">The endpoint-healing demonstration was not run for this run (--skip-endpoint-demo).</div>';
+
+  /* MULTI-STAGE APT CAMPAIGN (simulated) */
+  var AP=D.apt_campaign,aps=document.getElementById('aptSection');
+  if(aps){
+    if(!AP){aps.innerHTML='<div class="card">The APT campaign simulation was not run for this run (--skip-apt-demo).</div>';}
+    else{
+      var okC=AP.verdict==='CAMPAIGN_CONTAINED_VERIFIED';
+      var lane=function(h){return '<div class="ep-sec" style="margin-top:0"><h5>'+esc(h)+' · '+esc((AP.hosts||{})[h])+'</h5><div class="timeline-x" style="margin-top:0">'+
+        (AP.timeline||[]).map(function(s){var here=s.host_id===h;return '<div class="tlx" style="'+(here?'':'opacity:.28')+'"><div class="tn">#'+s.seq+' '+esc(s.tactic_id)+'</div><div class="tv" style="font-size:12px">'+(here?esc(s.tactic):'—')+'</div>'+(here?'<div class="hash" style="margin-top:4px">'+esc(s.artifact)+'</div>':'')+'</div>';}).join('')+'</div></div>';};
+      var corr=(AP.correlations||[]).map(function(c){return '<tr><td>'+chip(c.type)+'</td><td class="mono">'+esc(c.artifact)+'</td><td class="hash">'+short(c.sha256)+'</td><td>'+esc((c.from_hosts||[]).join(', '))+' → '+esc(c.to_host)+'</td><td style="font-size:11px;color:var(--text3)">'+esc(c.interpretation)+'</td></tr>';}).join('')||'<tr><td colspan="5" style="color:var(--text3)">No cross-host correlation found.</td></tr>';
+      var resp=Object.keys(AP.responses||{}).map(function(h){var r=AP.responses[h],is=r.integrity_summary||{},rs=(AP.rescan||{})[h]||{};
+        return '<div class="ep-sec" style="margin-top:0"><h5>'+esc(h)+' response</h5>'+
+          '<div class="mr"><span class="mk">Endpoint status</span><span class="mval">'+chip(r.recovery_status)+'</span></div>'+
+          '<div class="mr"><span class="mk">SHA-256 checks</span><span class="mval">'+(is.files_passed||0)+' / '+(is.files_checked||0)+'</span></div>'+
+          '<div class="mr"><span class="mk">Quarantined</span><span class="mval">'+(r.quarantine_actions||[]).map(function(q){return esc(q.original_path.split('/').pop())+(q.known_campaign_ioc?' '+chip('KNOWN IOC'):'');}).join('<br/>')+'</span></div>'+
+          '<div class="mr"><span class="mk">Persistence removed</span><span class="mval">'+esc((r.persistence_removed||[]).join(', ')||'none')+'</span></div>'+
+          '<div class="mr"><span class="mk">Decision</span><span class="mval">'+chip((r.decision||{}).healing_action||'—')+'</span></div>'+
+          '<div class="mr"><span class="mk">Re-scan: IOC files left</span><span class="mval">'+((rs.ioc_files_remaining||[]).length?chip('PRESENT'):chip('NONE'))+'</span></div>'+
+          '<div class="mr"><span class="mk">Re-scan: matches baseline</span><span class="mval">'+(rs.matches_clean_baseline?chip('VERIFIED'):chip('FAILED'))+'</span></div></div>';}).join('');
+      var mem=((AP.memory_record||{}).events||[]).map(function(e){return '<tr><td class="mono">'+e.seq+'</td><td class="mono">'+esc(e.tactic_id)+'</td><td>'+esc(e.tactic)+'</td><td>'+esc(e.host_id)+'</td><td class="mono" style="font-size:10px">'+esc(e.artifact)+'</td><td class="hash">'+short(e.artifact_sha256)+'</td><td style="font-size:11px;color:var(--text3)">'+esc(e.description)+'</td></tr>';}).join('');
+      var trig=AP.trigger_incident||{};
+      aps.innerHTML='<div class="ep-host '+(okC?'ok':'bad')+'">'+
+        '<div class="ep-head"><div><div class="ep-title">Campaign '+esc(AP.campaign_id)+'</div><div class="ep-sub">'+esc(AP.scope_note)+'</div>'+
+        '<div class="ep-sub mono" style="margin-top:4px">Trigger: '+esc(trig.event_id||'standalone')+' · report '+esc(AP.report_path)+'</div></div>'+
+        '<div class="ep-verdict"><div class="vv" style="color:'+(okC?'var(--green)':'var(--red)')+'">'+esc(AP.verdict)+'</div><div style="font-size:11px;color:var(--text3)">'+(AP.timeline||[]).length+' stages · '+Object.keys(AP.hosts||{}).length+' hosts · '+(AP.correlations||[]).length+' cross-host link(s)</div></div></div>'+
+        '<div style="display:grid;gap:12px">'+Object.keys(AP.hosts||{}).map(lane).join('')+'</div>'+
+        '<div class="ep-sec"><h5>Cross-host correlation (threat memory · apt_iocs)</h5><table class="dt" style="font-size:11px"><thead><tr><th>Type</th><th>Artefact</th><th>SHA-256</th><th>Hosts</th><th>Meaning</th></tr></thead><tbody>'+corr+'</tbody></table></div>'+
+        '<div class="ep-grid" style="margin-top:12px;grid-template-columns:repeat(2,minmax(0,1fr))">'+resp+'</div>'+
+        '<div class="ep-sec"><h5>Campaign stage record (SQLite · apt_campaign_events)</h5><table class="dt" style="font-size:11px"><thead><tr><th>#</th><th>Tactic ID</th><th>Tactic</th><th>Host</th><th>Artefact</th><th>SHA-256</th><th>Description</th></tr></thead><tbody>'+mem+'</tbody></table></div>'+
+      '</div>';
+    }
+  }
+
+  /* ENDPOINT AUDIT (SQLite) */
+  var ea=document.getElementById('epAuditRows');
+  if(ea)ea.innerHTML=(DB.endpoint_healing_audit||[]).length?DB.endpoint_healing_audit.map(function(a){var ok=Number(a.verified)===1;
+    return '<tr><td class="mono" style="font-size:10px">'+esc(a.incident_id)+'</td><td>'+esc(a.host_id)+'</td><td>'+esc(a.scenario)+'</td><td class="mono" style="font-size:10px">'+esc(a.trigger_event_id||'—')+'</td><td>'+chip(a.recovery_status)+'</td><td>'+chip(ok?'YES':'NO')+'</td><td>'+(a.files_checked-a.files_failed)+' / '+a.files_checked+'</td><td>'+a.quarantined+'</td><td>'+a.restored+'</td><td>'+a.persistence_removed+'</td><td>'+chip(a.final_healing_action)+'</td></tr>';}).join('')
+    :'<tr><td colspan="11" style="color:var(--text3)">No endpoint healing audit rows in this run\'s database.</td></tr>';
+
+  /* CHARTS FOR NEW SECTIONS (built lazily by the original nav script) */
+  var G='#00e5a0',R='#ff4466',A='#00c8ff',Y='#ffe066',P='#9966ff',O='#ff8c00',GR='#1a3050',T2='#8baac8';
+  window.RUN_CHARTS={
+    endpoint:function(){
+      var c1=document.getElementById('epIntegrityChart'),c2=document.getElementById('epActionsChart');
+      var labels=EP.map(function(r){return r.host_id+' · '+(r.verified?'HEALED':'INCOMPLETE');});
+      if(c1)new Chart(c1,{type:'bar',data:{labels:labels,datasets:[
+        {label:'SHA-256 passed',data:EP.map(function(r){return (r.integrity_summary||{}).files_passed||0;}),backgroundColor:G+'bb',borderColor:G,borderWidth:1.5,borderRadius:4},
+        {label:'SHA-256 failed',data:EP.map(function(r){return (r.integrity_summary||{}).files_failed||0;}),backgroundColor:R+'bb',borderColor:R,borderWidth:1.5,borderRadius:4}]},
+        options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#c8dff0'}}},
+          scales:{x:{stacked:true,grid:{color:GR},ticks:{color:T2,precision:0},title:{display:true,text:'Files checked',color:T2}},y:{stacked:true,grid:{color:'transparent'},ticks:{color:'#c8dff0',font:{size:12,family:'Rajdhani',weight:'bold'}}}}}});
+      var count=function(f){return EP.map(f);};
+      if(c2)new Chart(c2,{type:'bar',data:{labels:EP.map(function(r){return r.host_id;}),datasets:[
+        {label:'Detected changes',data:count(function(r){var d=r.detected||{};return (d.unauthorized_files||[]).length+(d.modified_files||[]).length+(d.missing_files||[]).length;}),backgroundColor:O+'bb',borderColor:O,borderWidth:1.5,borderRadius:4},
+        {label:'Quarantined',data:count(function(r){return (r.quarantine_actions||[]).length;}),backgroundColor:P+'bb',borderColor:P,borderWidth:1.5,borderRadius:4},
+        {label:'Persistence removed',data:count(function(r){return (r.persistence_removed||[]).length;}),backgroundColor:Y+'bb',borderColor:Y,borderWidth:1.5,borderRadius:4},
+        {label:'Restored',data:count(function(r){return (r.restoration_actions||[]).filter(function(a){return a.restored;}).length;}),backgroundColor:G+'bb',borderColor:G,borderWidth:1.5,borderRadius:4},
+        {label:'Restore refused',data:count(function(r){return (r.restoration_actions||[]).filter(function(a){return !a.restored;}).length;}),backgroundColor:R+'bb',borderColor:R,borderWidth:1.5,borderRadius:4}]},
+        options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#c8dff0',boxWidth:12}}},
+          scales:{x:{grid:{color:'transparent'},ticks:{color:'#c8dff0',font:{size:13,family:'Rajdhani',weight:'bold'}}},y:{grid:{color:GR},ticks:{color:T2,precision:0}}}}});
+    },
+    threatintel:function(){
+      var c=document.getElementById('patternChart');var p=V.patterns||{};
+      if(c)new Chart(c,{type:'doughnut',data:{labels:['NEW','KNOWN','REPEATED'],datasets:[{data:[p.NEW||0,p.KNOWN||0,p.REPEATED||0],backgroundColor:[A+'cc',Y+'cc',P+'cc'],borderColor:'#0d1a30',borderWidth:2}]},
+        options:{responsive:true,maintainAspectRatio:false,cutout:'62%',plugins:{legend:{position:'right',labels:{color:'#c8dff0',font:{size:12}}}}}});
+    }
+  };
+
+  /* Deep link: dashboard.html#tab=endpoint opens that tab after load */
+  window.addEventListener('load',function(){
+    var m=location.hash.match(/tab=([a-z]+)/);
+    if(!m)return;
+    var b=document.querySelector('.nb[data-pg="'+m[1]+'"]');
+    if(b)b.click();
+  });
+})();
+</script>
+
+<script>
+(function(){
+  /* NAV */
+  var btns=document.querySelectorAll('.nb');
+  var pages=document.querySelectorAll('.pg');
+  var ready={};
+  btns.forEach(function(btn){
+    btn.addEventListener('click',function(){
+      var pg=this.getAttribute('data-pg');
+      btns.forEach(function(b){b.classList.remove('act');});
+      pages.forEach(function(p){p.classList.remove('show');});
+      this.classList.add('act');
+      document.getElementById('pg-'+pg).classList.add('show');
+      if(!ready[pg]){buildCharts(pg);ready[pg]=true;}
+    });
+  });
+
+  /* CHART DEFAULTS */
+  var A='#00c8ff',G='#00e5a0',R='#ff4466',O='#ff8c00',P='#9966ff',Y='#ffe066';
+  var GR='#1a3050',T2='#8baac8';
+  var HAS_CHART=(typeof Chart!=='undefined');
+  if(HAS_CHART){Chart.defaults.color=T2;Chart.defaults.borderColor=GR;}
+  else{document.querySelectorAll('canvas').forEach(function(c){var m=document.createElement('div');m.className='chart-off';m.textContent='Chart library unavailable (offline). Data tables on this page remain accurate.';c.parentNode.replaceChild(m,c);});}
+
+  /* ACTUAL DATA */
+  var CIC_L=['Bwd Packets/s','Init Bwd Win Bytes','Bwd Pkt Len Std','Total Bwd Packets','Init Fwd Win Bytes','Avg Packet Size','Fwd IAT Max','Fwd IAT Mean','Flow Duration','Fwd Pkt Len Max'];
+  var CIC_V=[0.0376,0.0356,0.0352,0.0346,0.0345,0.0317,0.0310,0.0305,0.0301,0.0284];
+  var UNSW_L=['ct_dst_src_ltm','sttl','sload','sbytes','smean','ct_srv_dst','ct_state_ttl','ct_dst_sport_ltm','rate','dbytes'];
+  var UNSW_V=[0.0741,0.0617,0.0587,0.0538,0.0445,0.0429,0.0424,0.0419,0.0415,0.0363];
+  var RD=window.RUN_DATA||{view:{reward_curve:[],actions:{},risk:{ALLOW:{},ALERT:{},BLOCK:{}},patterns:{}},endpoint_healing:[]};
+  var RL_S=RD.view.reward_curve.map(function(p){return 'Step '+p.step;});
+  var RL_R=RD.view.reward_curve.map(function(p){return p.reward;});
+
+  function horizBar(id,labels,vals,color){
+    var ctx=document.getElementById(id);
+    if(!ctx||!HAS_CHART)return;
+    new Chart(ctx,{type:'bar',
+      data:{labels:labels,datasets:[{label:'Importance',data:vals,
+        backgroundColor:vals.map(function(_,i){return color+Math.floor(220-i*15).toString(16).padStart(2,'0');}),
+        borderColor:color,borderWidth:1,borderRadius:4}]},
+      options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:function(v){return '  '+v.raw.toFixed(4);}}}},
+        scales:{x:{grid:{color:GR},ticks:{color:T2,font:{size:10}},title:{display:true,text:'Importance Score',color:T2,font:{size:10}}},
+                y:{grid:{color:'transparent'},ticks:{color:'#c8dff0',font:{size:11}}}}}});
+  }
+
+  window.buildCharts=function(page){
+    if(!HAS_CHART)return;
+    if(window.RUN_CHARTS&&window.RUN_CHARTS[page])window.RUN_CHARTS[page]();
+    if(page==='mlmodel'){
+      horizBar('cicFeatChart',CIC_L,CIC_V,A);
+    }
+    if(page==='rlagent'){
+      new Chart(document.getElementById('rlRewardChart'),{type:'line',
+        data:{labels:RL_S,datasets:[{label:'Cumulative Reward',data:RL_R,
+          borderColor:G,backgroundColor:G+'18',borderWidth:2.5,fill:true,tension:0.4,
+          pointRadius:3,pointBackgroundColor:G}]},
+        options:{responsive:true,maintainAspectRatio:false,
+          plugins:{legend:{display:false},tooltip:{callbacks:{label:function(v){return '  '+v.raw.toLocaleString();}}}},
+          scales:{x:{grid:{color:GR},ticks:{color:T2,font:{size:10}},title:{display:true,text:'Steps',color:T2,font:{size:10}}},
+                  y:{grid:{color:GR},ticks:{color:T2,font:{size:10},callback:function(v){return v.toLocaleString();}},title:{display:true,text:'Cumulative Reward',color:T2,font:{size:10}}}}}});
+      new Chart(document.getElementById('rlActionChart'),{type:'bar',
+        data:{labels:['ALLOW','ALERT','BLOCK'],
+              datasets:[{label:'Count',data:[RD.view.actions.ALLOW,RD.view.actions.ALERT,RD.view.actions.BLOCK],
+                backgroundColor:[G+'cc',Y+'cc',R+'cc'],
+                borderColor:[G,Y,R],borderWidth:1.5,borderRadius:6}]},
+        options:{responsive:true,maintainAspectRatio:false,
+          plugins:{legend:{display:false}},
+          scales:{x:{grid:{color:'transparent'},ticks:{color:'#c8dff0',font:{size:14,family:'Rajdhani',weight:'bold'}}},
+                  y:{grid:{color:GR},ticks:{color:T2,font:{size:10}}}}}});
+    }
+    if(page==='results'){
+      horizBar('cicFeatChartR',CIC_L,CIC_V,A);
+      horizBar('unswFeatChart',UNSW_L,UNSW_V,O);
+      new Chart(document.getElementById('secGapChart'),{type:'bar',
+        data:{
+          labels:['ALLOW','ALERT','BLOCK'],
+          datasets:[
+            {label:'Safe Traffic',data:['ALLOW','ALERT','BLOCK'].map(function(a){return RD.view.risk[a].safe;}),backgroundColor:A+'55',borderColor:A,borderWidth:1.5,borderRadius:4},
+            {label:'Risk / Malicious',data:['ALLOW','ALERT','BLOCK'].map(function(a){return RD.view.risk[a].risk;}),backgroundColor:R+'99',borderColor:R,borderWidth:1.5,borderRadius:4}
+          ]},
+        options:{responsive:true,maintainAspectRatio:false,
+          plugins:{
+            legend:{labels:{color:'#c8dff0',font:{size:12}}},
+            tooltip:{callbacks:{label:function(v){return ' '+v.dataset.label+': '+v.raw.toLocaleString();}}}
+          },
+          scales:{
+            x:{stacked:true,grid:{color:'transparent'},ticks:{color:'#c8dff0',font:{size:14,family:'Rajdhani',weight:'bold'}}},
+            y:{stacked:true,grid:{color:GR},ticks:{color:T2,font:{size:10},callback:function(v){return v>=1000?v/1000+'k':v;}},title:{display:true,text:'Count',color:T2}}
+          }}});
+      new Chart(document.getElementById('compareChart'),{type:'bar',
+        data:{labels:['Accuracy','Macro F1','Weighted F1'],
+          datasets:[
+            {label:'CIC-IDS',data:[98.47,98.0,98.0],backgroundColor:A+'bb',borderColor:A,borderWidth:1.5,borderRadius:4},
+            {label:'UNSW-NB15',data:[90.43,90.0,91.0],backgroundColor:O+'bb',borderColor:O,borderWidth:1.5,borderRadius:4}
+          ]},
+        options:{responsive:true,maintainAspectRatio:false,
+          plugins:{legend:{display:true,labels:{color:'#c8dff0',font:{size:12}}}},
+          scales:{x:{grid:{color:'transparent'},ticks:{color:'#c8dff0',font:{size:13}}},
+                  y:{grid:{color:GR},min:85,max:100,
+                     ticks:{color:T2,font:{size:10},callback:function(v){return v+'%';}},
+                     title:{display:true,text:'Score (%)',color:T2}}}}});
+    }
+  };
+})();
+</script>
+
+<script>
+(function(){
+  const EVENTS=(window.RUN_DATA&&window.RUN_DATA.events)||[];
+  const esc=(v)=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+  const truth=v=>Number(v)===1?'ATTACK':'BENIGN';
+  const pred=v=>Number(v)===1?'ATTACK':'BENIGN';
+  const yes=v=>String(v).toLowerCase()==='true'||Number(v)===1;
+  function pbadge(v){
+    if(!v)return '<span style="color:var(--text3)">—</span>';
+    let c=v==='NEW'?'b-new':(v==='KNOWN'?'b-known':'b-repeated');
+    return '<span class="badge-x '+c+'">'+esc(v)+'</span>';
+  }
+  function detail(e){
+    const steps=[
+      ['DETECT',pred(e.prediction)+' · '+(Number(e.confidence)*100).toFixed(1)+'%'],
+      ['ASSESS',esc(e.severity)+' · '+Number(e.threat_score).toFixed(2)+'/100'],
+      ['PATTERN',e.pattern_status?esc(e.pattern_status):'Not stored'],
+      ['RL DECISION',esc(e.initial_action)],
+      ['VERIFY',esc(e.initial_verification)],
+      ['HEAL',esc(e.healing_action||'NOT REQUIRED')],
+      ['RECOVERY',esc(e.recovery_status||'NOT REQUIRED')]
+    ];
+    return `<div class="card" style="background:#071321">
+      <div class="ct">Event Lifecycle · ${esc(e.event_id)}</div>
+      <div class="timeline-x">${steps.map(s=>`<div class="tlx"><div class="tn">${s[0]}</div><div class="tv">${s[1]}</div></div>`).join('')}</div>
+      <div class="detail-grid" style="margin-top:12px">
+        <div class="detail-cell"><div class="dk">Ground Truth</div><div class="dv">${truth(e.true_label)}</div></div>
+        <div class="detail-cell"><div class="dk">RL State</div><div class="dv">${esc(e.rl_state)}</div></div>
+        <div class="detail-cell"><div class="dk">Initial Response</div><div class="dv">${esc(e.initial_response)}</div></div>
+        <div class="detail-cell"><div class="dk">Pattern ID</div><div class="dv">${esc(e.pattern_id||'—')}</div></div>
+        <div class="detail-cell"><div class="dk">Recommended Action</div><div class="dv">${esc(e.recommended_action||'—')}</div></div>
+        <div class="detail-cell"><div class="dk">Recovery Action</div><div class="dv">${esc(e.recovery_action||'—')}</div></div>
+        <div class="detail-cell"><div class="dk">Post-Recovery Containment</div><div class="dv">${yes(e.post_recovery_simulated_containment)?'YES':'NO'}</div></div>
+        <div class="detail-cell"><div class="dk">Reward</div><div class="dv">${esc(e.reward)}</div></div>
+      </div>
+    </div>`;
+  }
+  function renderHeal(){
+    const body=document.getElementById('healRows'); if(!body)return;
+    const q=(document.getElementById('healSearch').value||'').toLowerCase();
+    const mode=document.getElementById('healFilter').value;
+    const act=document.getElementById('healAction').value;
+    let rows=EVENTS.filter(e=>{
+      if(mode==='RECOVERY'&&!yes(e.recovery_required))return false;
+      if(mode==='ATTACK'&&Number(e.true_label)!==1)return false;
+      if(mode==='FALSE_BLOCK'&&!(Number(e.true_label)===0&&e.initial_action==='BLOCK'))return false;
+      if(act!=='ALL'&&e.initial_action!==act)return false;
+      if(q&&!JSON.stringify(e).toLowerCase().includes(q))return false;
+      return true;
+    }).slice(0,250);
+    body.innerHTML=rows.map(e=>`<tr class="clickrow" data-step="${e.step}">
+      <td class="mono">${e.step}</td><td class="${Number(e.true_label)===1?'atk':'ben'}">${truth(e.true_label)}</td>
+      <td class="${Number(e.prediction)===1?'atk':'ben'}">${pred(e.prediction)}</td>
+      <td class="mono">${Number(e.threat_score).toFixed(1)}</td><td>${esc(e.initial_action)}</td>
+      <td>${esc(e.initial_verification)}</td><td>${esc(e.healing_action||'—')}</td><td>${esc(e.recovery_status||'—')}</td><td>${pbadge(e.pattern_status)}</td>
+    </tr>`).join('');
+    body.querySelectorAll('tr').forEach(r=>r.addEventListener('click',()=>{
+      const e=EVENTS.find(x=>String(x.step)===r.dataset.step); const d=document.getElementById('eventDetail');
+      d.innerHTML=detail(e); d.classList.add('show'); d.scrollIntoView({behavior:'smooth',block:'nearest'});
+    }));
+  }
+  function renderIntel(){
+    const body=document.getElementById('intelRows'); if(!body)return;
+    const q=(document.getElementById('intelSearch').value||'').toLowerCase();
+    const sev=document.getElementById('intelSeverity').value, pat=document.getElementById('intelPattern').value, act=document.getElementById('intelDecision').value;
+    let rows=EVENTS.filter(e=>{
+      if(sev!=='ALL'&&e.severity!==sev)return false;
+      if(pat!=='ALL'&&e.pattern_status!==pat)return false;
+      if(act!=='ALL'&&e.initial_action!==act)return false;
+      if(q&&!((e.event_id||'')+' '+(e.pattern_id||'')).toLowerCase().includes(q))return false;
+      return true;
+    }).slice(0,300);
+    body.innerHTML=rows.map(e=>`<tr>
+      <td class="mono">${e.step}</td><td class="mono">${esc(e.event_id)}</td><td>${esc(e.severity)}</td>
+      <td class="mono">${(Number(e.confidence)*100).toFixed(1)}%</td><td>${pbadge(e.pattern_status)}</td>
+      <td class="mono">${esc(e.pattern_id||'—')}</td><td>${esc(e.initial_action)}</td><td>${esc(e.initial_verification)}</td>
+    </tr>`).join('');
+  }
+  ['healSearch','healFilter','healAction'].forEach(id=>{const n=document.getElementById(id);if(n)n.addEventListener(id==='healSearch'?'input':'change',renderHeal);});
+  ['intelSearch','intelSeverity','intelPattern','intelDecision'].forEach(id=>{const n=document.getElementById(id);if(n)n.addEventListener(id==='intelSearch'?'input':'change',renderIntel);});
+  renderHeal(); renderIntel();
+})();
+</script>
+
+</body>
+</html>
