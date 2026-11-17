@@ -389,18 +389,10 @@ verified code unchanged.
 
 ## Project Team
 
-This project was developed as part of the **B.Tech in Artificial Intelligence and Data Science** program at **K. J. Somaiya School of Engineering, Somaiya Vidyavihar University, Mumbai**.
-
-### Group Members
-
 - **Nikunj Mody**
 - **Swaraj Patil**
 - **Jash Prajapati**
 - **Kevalya Rathod**
-
-### Academic Guide
-
-**Prof. Deepti Patole**
 
 ## Acknowledgements
 
