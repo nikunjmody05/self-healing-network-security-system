@@ -19,17 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
--------------------------------------------------------------------------------
-Scope: this licence covers the project's own source code, tests, dashboard
-template, documentation and generated artefacts in this repository. It does
-NOT replace the licences of bundled third-party components, which remain under
-their own terms (see third_party_licenses/ and dashboard/vendor/NOTICE.txt):
-
-  dashboard/vendor/chart.umd.js, examples/sample_run/chart.umd.js
-      Chart.js v4.4.1 - MIT License, Copyright (c) 2014-2022 Chart.js Contributors
-  dashboard/vendor/fonts/, examples/sample_run/fonts/
-      Inter, Rajdhani, Share Tech Mono - SIL Open Font License 1.1
-
-The CIC and UNSW-NB15 datasets are not distributed here and remain under the
-terms of their publishers.

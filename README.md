@@ -48,10 +48,22 @@ evidence the code produces itself.
 
 ## Architecture
 
-![Architecture](assets/diagrams/architecture.png)
+### System overview
 
-Data flow of one run: [assets/diagrams/data_flow.png](assets/diagrams/data_flow.png) ·
-endpoint recovery sequence: [assets/diagrams/sequence_endpoint_recovery.png](assets/diagrams/sequence_endpoint_recovery.png)
+![System architecture](assets/diagrams/architecture.png)
+
+*`pipeline.py` runs each labelled flow through detection, assessment, the frozen Q-table and a
+simulated response. The verifier then checks the result against ground truth after the action, and
+the self-healing engine decides whether to re-execute (recovery, oracle-assisted). ESCALATE / ISOLATE
+incidents trigger the controlled endpoint and APT simulations, whose SHA-256 evidence returns to the
+verifier. All state goes to one SQLite file per run. Nothing here captures live traffic or enforces
+firewall or endpoint changes.*
+
+### Data flow of one run
+
+![Data flow of one run](assets/diagrams/data_flow.png)
+
+*Inputs, models and per-run outputs. Every run writes only under `runs/<RUN_ID>/`.*
 
 ## Technology stack
 Python 3.14 · pandas · NumPy · scikit-learn · joblib · Matplotlib · PyArrow · SQLite ·
@@ -100,6 +112,10 @@ The demonstration runs two scenarios: an intact backup (**HEALED_VERIFIED, 5/5**
 the attacker also corrupted (**restore refused → HEALING_INCOMPLETE, 4/5 → SOC_REVIEW** with an
 ISOLATE recommendation). A path guard rejects any write outside the host folder.
 
+![Endpoint recovery sequence](assets/diagrams/sequence_endpoint_recovery.png)
+
+*Endpoint recovery sequence: the trust check comes before any restore, and verification re-hashes every file.*
+
 ![Endpoint healing](assets/screenshots/endpoint_healing.png)
 
 ## Multi-stage APT simulation
@@ -120,6 +136,11 @@ it was already seen on HOST-A, which links the campaign. Both hosts are healed, 
 declared contained only if both verify **and** a final re-scan finds no IOC or rogue persistence:
 `CAMPAIGN_CONTAINED_VERIFIED`. A test with a corrupted HOST-B backup yields `CAMPAIGN_NOT_CONTAINED`.
 The lateral movement is simulated; the correlation logic is real.
+
+![APT campaign sequence](assets/diagrams/sequence_apt_campaign.png)
+
+*APT campaign sequence: stages are recorded in threat memory, the implant hash is correlated across
+hosts, both hosts are healed, and the final re-scan sets the campaign verdict.*
 
 ![APT campaign](assets/screenshots/apt_campaign.png)
 
@@ -249,6 +270,11 @@ Each run creates its own SQLite database (`runs/<RUN_ID>/threat_memory_run.db`; 
 
 ![Database design](assets/diagrams/database_er.png)
 
+*The schema declares no FOREIGN KEY constraints. The dashed arrows are logical links: the
+application writes matching values. `recovery_audit.event_id` matches a `threat_events` row only
+when the Random Forest flagged that flow. Tables marked "created on first use" appear once the
+endpoint or APT simulation runs.*
+
 ## Tests
 
 ```bash
@@ -352,7 +378,8 @@ real flows; seeded retraining for a fully leakage-free benchmark.
 ├── tests/                          # 53 unit and integration tests
 ├── assets/                         # screenshots and diagrams for this README
 ├── third_party_licenses/           # Chart.js (MIT) and font (SIL OFL 1.1) licence texts
-├── LICENSE                         # MIT (project code only)
+├── LICENSE                         # MIT License
+├── NOTICE.txt                      # licence scope and bundled third-party components
 └── data/                           # place the dataset here (not committed)
 ```
 
@@ -378,5 +405,6 @@ Datasets © Canadian Institute for Cybersecurity and UNSW Canberra Cyber.
 The project's own code is released under the **MIT License** ([LICENSE](LICENSE)).
 Bundled third-party components keep their own licences, which the MIT licence does not replace:
 Chart.js v4.4.1 (MIT, © Chart.js Contributors) and the Inter, Rajdhani and Share Tech Mono fonts
-(SIL Open Font License 1.1). Full texts are in [third_party_licenses/](third_party_licenses/);
-see also [dashboard/vendor/NOTICE.txt](dashboard/vendor/NOTICE.txt).
+(SIL Open Font License 1.1). The scope is described in [NOTICE.txt](NOTICE.txt); full licence
+texts are in [third_party_licenses/](third_party_licenses/) (see also
+[dashboard/vendor/NOTICE.txt](dashboard/vendor/NOTICE.txt)).
