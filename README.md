@@ -387,12 +387,10 @@ The Python modules sit at the top level because they import each other directly;
 verified code unchanged.
 
 
-## Project Team
+## Author
 
-- **Nikunj Mody**
-- **Swaraj Patil**
-- **Jash Prajapati**
-- **Kevalya Rathod**
+**Nikunj Mody** — design and implementation (ML/RL pipeline, threat memory, endpoint healing,
+APT simulation, database, SOC dashboard).
 
 ## Acknowledgements
 
